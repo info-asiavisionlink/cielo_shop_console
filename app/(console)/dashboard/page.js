@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   let stats = { activeProducts: 0, totalOrders: 0, pendingOrders: 0, totalRevenue: 0, totalCustomers: 0, recentOrders: [] }
-  try { stats = await getDashboardStats() } catch {}
+  try { stats = await getDashboardStats() } catch (err) { console.error('[DASHBOARD] getDashboardStats error:', err) }
 
   const STATUS_MAP = {
     pending: '未確認', paid: '支払い済', processing: '処理中',

@@ -20,17 +20,21 @@ export default function LoginPage() {
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) {
         console.log('LOGIN_ERROR', err)
-        setError('メールアドレスまたはパスワードが正しくありません。')
+        // eslint-disable-next-line no-alert
+        alert('[DEBUG] LOGIN_ERROR: ' + err.message)
+        setError(err.message)
         return
       }
       console.log('LOGIN_SUCCESS')
       console.log('SESSION', data.session)
-      // refresh → push の順でサーバーキャッシュを更新してから遷移
-      router.refresh()
-      router.push('/dashboard')
+      console.log('USER', data.user)
+      // hard navigation でセッションcookieを確実にサーバーへ送る
+      window.location.href = '/dashboard'
     } catch (err) {
       console.log('LOGIN_ERROR', err)
-      setError('ログインに失敗しました。しばらくしてからお試しください。')
+      // eslint-disable-next-line no-alert
+      alert('[DEBUG] LOGIN_EXCEPTION: ' + err.message)
+      setError(err.message ?? 'ログインに失敗しました。')
     } finally {
       setLoading(false)
     }

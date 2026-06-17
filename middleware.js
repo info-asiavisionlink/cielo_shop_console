@@ -21,20 +21,31 @@ export async function middleware(request) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  const isLoginPage = request.nextUrl.pathname === '/login'
+  const path = request.nextUrl.pathname
+  const isLoginPage = path === '/login'
+
+  if (authError) {
+    console.log('[MIDDLEWARE] AUTH_ERROR', authError.message, 'path:', path)
+  }
 
   if (!user && !isLoginPage) {
+    console.log('[MIDDLEWARE] NO_SESSION → redirect /login', 'path:', path)
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   if (user && isLoginPage) {
+    console.log('[MIDDLEWARE] ALREADY_LOGGED_IN → redirect /dashboard', 'user.id:', user.id)
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
+  }
+
+  if (user) {
+    console.log('[MIDDLEWARE] AUTH_OK user.id:', user.id, 'path:', path)
   }
 
   return supabaseResponse
