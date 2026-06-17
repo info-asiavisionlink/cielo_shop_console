@@ -25,11 +25,19 @@ export async function getProduct(id) {
     .select(`
       *,
       product_images ( id, image_url, alt_text, sort_order, is_thumbnail ),
-      product_variants ( id, sku, type, label, label_ja, stock_count, price_modifier, sort_order )
+      product_variants ( id, sku, type, label, label_ja, stock_count, price_modifier, sort_order ),
+      product_tags ( tag_id, tags ( id, name, name_ja ) )
     `)
     .eq('id', id).single()
   if (error) throw new Error(error.message)
   return data
+}
+
+export async function getTags() {
+  const db = createAdminClient()
+  const { data, error } = await db.from('tags').select('id, name, name_ja').order('name')
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
 export async function createProduct(formData) {
@@ -38,8 +46,7 @@ export async function createProduct(formData) {
   const slug = slugify(formData.get('slug') || name)
 
   let attributes = {}
-  const attrsRaw = formData.get('attributes_json')
-  try { if (attrsRaw) attributes = JSON.parse(attrsRaw) } catch {}
+  try { const r = formData.get('attributes_json'); if (r) attributes = JSON.parse(r) } catch {}
 
   const payload = {
     slug,
@@ -63,16 +70,9 @@ export async function createProduct(formData) {
   if (error) throw new Error(error.message)
   const productId = data.id
 
-  // サムネイル画像
-  const imageUrl = formData.get('image_url')
-  if (imageUrl) {
-    await db.from('product_images').insert({
-      product_id: productId, image_url: imageUrl, is_thumbnail: true, sort_order: 0,
-    })
-  }
-
-  // バリアント
+  await _saveImages(db, productId, formData.get('images_json'))
   await _saveVariants(db, productId, formData.get('variants_json'))
+  await _saveTags(db, productId, formData.get('tags_json'))
 
   revalidatePath('/products')
   return productId
@@ -82,8 +82,7 @@ export async function updateProduct(id, formData) {
   const db = createAdminClient()
 
   let attributes = {}
-  const attrsRaw = formData.get('attributes_json')
-  try { if (attrsRaw) attributes = JSON.parse(attrsRaw) } catch {}
+  try { const r = formData.get('attributes_json'); if (r) attributes = JSON.parse(r) } catch {}
 
   const payload = {
     name:           formData.get('name'),
@@ -105,23 +104,30 @@ export async function updateProduct(id, formData) {
   const { error } = await db.from('products').update(payload).eq('id', id)
   if (error) throw new Error(error.message)
 
-  // サムネイル更新
-  const imageUrl = formData.get('image_url')
-  if (imageUrl) {
-    const { data: existing } = await db.from('product_images')
-      .select('id').eq('product_id', id).eq('is_thumbnail', true).maybeSingle()
-    if (existing) {
-      await db.from('product_images').update({ image_url: imageUrl }).eq('id', existing.id)
-    } else {
-      await db.from('product_images').insert({ product_id: id, image_url: imageUrl, is_thumbnail: true, sort_order: 0 })
-    }
-  }
-
-  // バリアント
+  await _saveImages(db, id, formData.get('images_json'))
   await _saveVariants(db, id, formData.get('variants_json'))
+  await _saveTags(db, id, formData.get('tags_json'))
 
   revalidatePath('/products')
   revalidatePath(`/products/${id}`)
+}
+
+/* ── Helpers ── */
+
+async function _saveImages(db, productId, imagesJson) {
+  let images = []
+  try { if (imagesJson) images = JSON.parse(imagesJson) } catch {}
+  const valid = images.filter(img => img.url?.trim())
+  if (!valid.length) return
+
+  await db.from('product_images').delete().eq('product_id', productId)
+  await db.from('product_images').insert(valid.map((img, i) => ({
+    product_id:   productId,
+    image_url:    img.url.trim(),
+    alt_text:     img.alt || null,
+    is_thumbnail: i === 0,
+    sort_order:   i,
+  })))
 }
 
 async function _saveVariants(db, productId, variantsJson) {
@@ -131,7 +137,7 @@ async function _saveVariants(db, productId, variantsJson) {
   if (!valid.length) return
 
   await db.from('product_variants').delete().eq('product_id', productId)
-  const rows = valid.map((v, i) => ({
+  await db.from('product_variants').insert(valid.map((v, i) => ({
     product_id:     productId,
     sku:            v.sku?.trim() || `${productId.slice(0, 8)}-V${i + 1}`,
     type:           v.type || 'size',
@@ -140,8 +146,31 @@ async function _saveVariants(db, productId, variantsJson) {
     stock_count:    parseInt(v.stock_count) || 0,
     price_modifier: parseInt(v.price_modifier) || 0,
     sort_order:     i,
-  }))
-  await db.from('product_variants').insert(rows)
+  })))
+}
+
+async function _saveTags(db, productId, tagsJson) {
+  let tags = []
+  try { if (tagsJson) tags = JSON.parse(tagsJson) } catch {}
+  if (!tags.length) return
+
+  const tagIds = []
+  for (const tag of tags) {
+    if (tag.id) {
+      tagIds.push(tag.id)
+    } else if (tag.name?.trim()) {
+      // 新規タグを upsert（重複ならそのIDを返す）
+      const { data } = await db.from('tags')
+        .upsert({ name: tag.name.trim().toLowerCase(), name_ja: tag.name_ja?.trim() || null }, { onConflict: 'name' })
+        .select('id').single()
+      if (data) tagIds.push(data.id)
+    }
+  }
+
+  await db.from('product_tags').delete().eq('product_id', productId)
+  if (tagIds.length) {
+    await db.from('product_tags').insert(tagIds.map(tag_id => ({ product_id: productId, tag_id })))
+  }
 }
 
 export async function toggleProductStatus(id, currentStatus) {
