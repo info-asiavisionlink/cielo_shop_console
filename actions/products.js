@@ -9,7 +9,7 @@ function slugify(text) {
 export async function getProducts(category = 'all') {
   const db = createAdminClient()
   let q = db.from('products').select(`
-    id, slug, name, name_ja, category, subcategory,
+    id, slug, name, name_ja, category, subcategory, product_type,
     price, stock_count, status, featured, created_at,
     product_images ( image_url, is_thumbnail )
   `).order('created_at', { ascending: false })
@@ -24,6 +24,7 @@ export async function getProduct(id) {
   const { data, error } = await db.from('products')
     .select(`
       *,
+      product_specs ( id, spec_type, spec_key, spec_value, sort_order ),
       product_images ( id, image_url, alt_text, sort_order, is_thumbnail ),
       product_variants ( id, sku, type, label, label_ja, stock_count, price_modifier, sort_order ),
       product_tags ( tag_id, tags ( id, name, name_ja ) )
@@ -44,16 +45,15 @@ export async function createProduct(formData) {
   const db = createAdminClient()
   const name = formData.get('name')
   const slug = slugify(formData.get('slug') || name)
-
-  let attributes = {}
-  try { const r = formData.get('attributes_json'); if (r) attributes = JSON.parse(r) } catch {}
+  const category = formData.get('category')
 
   const payload = {
     slug,
     name,
     name_ja:        formData.get('name_ja')        || null,
-    category:       formData.get('category'),
+    category,
     subcategory:    formData.get('subcategory')     || '',
+    product_type:   formData.get('product_type')    || null,
     price:          parseInt(formData.get('price'), 10)       || 0,
     stock_count:    parseInt(formData.get('stock_count'), 10) || 0,
     status:         formData.get('status')          || 'draft',
@@ -65,7 +65,7 @@ export async function createProduct(formData) {
     og_image_url:    formData.get('og_image_url')     || null,
     seo_title:       formData.get('seo_title')        || null,
     seo_description: formData.get('seo_description')  || null,
-    attributes,
+    attributes:      {},
   }
 
   const { data, error } = await db.from('products').insert(payload).select('id').single()
@@ -73,6 +73,7 @@ export async function createProduct(formData) {
   const productId = data.id
 
   await _saveImages(db, productId, formData.get('images_json'))
+  await _saveSpecs(db, productId, category, formData.get('specs_json'))
   await _saveVariants(db, productId, formData.get('variants_json'))
   await _saveTags(db, productId, formData.get('tags_json'))
 
@@ -82,15 +83,14 @@ export async function createProduct(formData) {
 
 export async function updateProduct(id, formData) {
   const db = createAdminClient()
-
-  let attributes = {}
-  try { const r = formData.get('attributes_json'); if (r) attributes = JSON.parse(r) } catch {}
+  const category = formData.get('category')
 
   const payload = {
     name:           formData.get('name'),
     name_ja:        formData.get('name_ja')        || null,
-    category:       formData.get('category'),
+    category,
     subcategory:    formData.get('subcategory')     || '',
+    product_type:   formData.get('product_type')    || null,
     price:          parseInt(formData.get('price'), 10)       || 0,
     stock_count:    parseInt(formData.get('stock_count'), 10) || 0,
     status:         formData.get('status'),
@@ -102,13 +102,13 @@ export async function updateProduct(id, formData) {
     og_image_url:    formData.get('og_image_url')     || null,
     seo_title:       formData.get('seo_title')        || null,
     seo_description: formData.get('seo_description')  || null,
-    attributes,
   }
 
   const { error } = await db.from('products').update(payload).eq('id', id)
   if (error) throw new Error(error.message)
 
   await _saveImages(db, id, formData.get('images_json'))
+  await _saveSpecs(db, id, category, formData.get('specs_json'))
   await _saveVariants(db, id, formData.get('variants_json'))
   await _saveTags(db, id, formData.get('tags_json'))
 
@@ -131,6 +131,23 @@ async function _saveImages(db, productId, imagesJson) {
     alt_text:     img.alt || null,
     is_thumbnail: i === 0,
     sort_order:   i,
+  })))
+}
+
+async function _saveSpecs(db, productId, category, specsJson) {
+  let specs = []
+  try { if (specsJson) specs = JSON.parse(specsJson) } catch {}
+  const valid = specs.filter(s => s.spec_key?.trim() && s.spec_value?.trim())
+
+  await db.from('product_specs').delete().eq('product_id', productId)
+  if (!valid.length) return
+
+  await db.from('product_specs').insert(valid.map((s, i) => ({
+    product_id: productId,
+    spec_type:  category || 'jewelry',
+    spec_key:   s.spec_key.trim(),
+    spec_value: s.spec_value.trim(),
+    sort_order: i,
   })))
 }
 
@@ -163,7 +180,6 @@ async function _saveTags(db, productId, tagsJson) {
     if (tag.id) {
       tagIds.push(tag.id)
     } else if (tag.name?.trim()) {
-      // 新規タグを upsert（重複ならそのIDを返す）
       const { data } = await db.from('tags')
         .upsert({ name: tag.name.trim().toLowerCase(), name_ja: tag.name_ja?.trim() || null }, { onConflict: 'name' })
         .select('id').single()

@@ -50,16 +50,57 @@ export default function NewProductPage() {
   )
 }
 
+/* ─── attrs → specs array 変換 ─── */
+const BOOL_SPEC_KEYS = new Set(['signed', 'framed', 'certificate'])
+
+function attrsToSpecs(attrs) {
+  return Object.entries(attrs)
+    .filter(([, v]) => v !== null && v !== '' && v !== undefined)
+    .map(([k, v], i) => ({
+      spec_key:   k,
+      spec_value: BOOL_SPEC_KEYS.has(k) ? (v ? 'あり' : 'なし') : String(v),
+      sort_order: i,
+    }))
+}
+
+/* ─── product_specs → attrs object 変換 ─── */
+function specsToAttrs(specs) {
+  const obj = {}
+  ;(specs || []).sort((a, b) => a.sort_order - b.sort_order).forEach(s => {
+    obj[s.spec_key] = BOOL_SPEC_KEYS.has(s.spec_key)
+      ? s.spec_value === 'あり'
+      : s.spec_value
+  })
+  return obj
+}
+
+/* ─── product_type → subcategory 変換 ─── */
+const TYPE_TO_SUBCAT = {
+  Necklace: 'necklace',
+  Ring:     'ring',
+  Bracelet: 'bracelet',
+  Pierce:   'pierce',
+  Pendant:  'pendant',
+  Tshirt:   'tshirt',
+  Hoodie:   'hoodie',
+}
+
 /* ═══════════════════════════════════════════════════════════
    ProductForm — 新規・編集 共用コンポーネント
-   product: getProduct() の返り値（編集時）
 ═══════════════════════════════════════════════════════════ */
 export function ProductForm({ product }) {
-  const [category, setCategory] = useState(product?.category || '')
-  const [featured, setFeatured] = useState(product?.featured ?? false)
-  const [attrs,    setAttrs]    = useState(product?.attributes || {})
+  const [category,    setCategory]    = useState(product?.category || '')
+  const [productType, setProductType] = useState(product?.product_type || '')
+  const [subcategory, setSubcategory] = useState(product?.subcategory || '')
+  const [featured,    setFeatured]    = useState(product?.featured ?? false)
 
-  // ── 画像 (最大5枚) ──
+  /* product_specs → attrs object で初期化（レガシー attributes へのフォールバック付き） */
+  const [attrs, setAttrs] = useState(() => {
+    if (product?.product_specs?.length) return specsToAttrs(product.product_specs)
+    return product?.attributes || {}
+  })
+
+  /* ── 画像 (最大5枚) ── */
   const initImages = () => {
     const imgs = (product?.product_images || [])
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -70,14 +111,14 @@ export function ProductForm({ product }) {
   }
   const [images, setImages] = useState(initImages)
 
-  // ── バリアント ──
+  /* ── バリアント ── */
   const [variants, setVariants] = useState(
     (product?.product_variants || [])
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(v => ({ sku: v.sku, type: v.type, label: v.label, label_ja: v.label_ja || '', stock_count: v.stock_count, price_modifier: v.price_modifier }))
   )
 
-  // ── タグ ──
+  /* ── タグ ── */
   const [allTags,      setAllTags]      = useState([])
   const [selectedTags, setSelectedTags] = useState(
     (product?.product_tags || []).map(pt => ({ id: pt.tags.id, name: pt.tags.name, name_ja: pt.tags.name_ja || '' }))
@@ -87,6 +128,17 @@ export function ProductForm({ product }) {
   useEffect(() => {
     getTags().then(setAllTags).catch(() => {})
   }, [])
+
+  /* product_type 変更時に subcategory を自動更新 */
+  useEffect(() => {
+    if ((category === 'jewelry' || category === 'apparel') && TYPE_TO_SUBCAT[productType]) {
+      setSubcategory(TYPE_TO_SUBCAT[productType])
+    }
+    if (category === 'art') {
+      setProductType('Art')
+      setSubcategory(subcategory || 'art')
+    }
+  }, [productType, category])
 
   /* ── helpers ── */
   function setAttr(key, value) { setAttrs(prev => ({ ...prev, [key]: value })) }
@@ -127,13 +179,29 @@ export function ProductForm({ product }) {
     setVariants(v => v.filter((_, idx) => idx !== i))
   }
 
+  /* ── variant type の初期値をカテゴリ別に設定 ── */
+  function defaultVariantType() {
+    if (category === 'jewelry') {
+      if (productType === 'Ring') return 'ring_size'
+      if (productType === 'Necklace' || productType === 'Pendant') return 'chain_length'
+      if (productType === 'Bracelet') return 'chain_length'
+    }
+    if (category === 'apparel') return 'color_size'
+    if (category === 'art') return 'size'
+    return 'size'
+  }
+
+  const specsJson = JSON.stringify(attrsToSpecs(attrs))
+
   return (
     <>
       {/* ─ JSON hidden inputs ─ */}
-      <input type="hidden" name="attributes_json" value={JSON.stringify(attrs)} />
-      <input type="hidden" name="variants_json"   value={JSON.stringify(variants)} />
-      <input type="hidden" name="images_json"     value={JSON.stringify(images)} />
-      <input type="hidden" name="tags_json"        value={JSON.stringify(selectedTags)} />
+      <input type="hidden" name="specs_json"    value={specsJson} />
+      <input type="hidden" name="variants_json" value={JSON.stringify(variants)} />
+      <input type="hidden" name="images_json"   value={JSON.stringify(images)} />
+      <input type="hidden" name="tags_json"     value={JSON.stringify(selectedTags)} />
+      <input type="hidden" name="product_type"  value={productType} />
+      <input type="hidden" name="subcategory"   value={subcategory} />
 
       {/* ══ 基本情報 ══ */}
       <div className="form-section">
@@ -156,7 +224,7 @@ export function ProductForm({ product }) {
             <select
               className="form-select" name="category"
               value={category}
-              onChange={e => { setCategory(e.target.value); setAttrs({}) }}
+              onChange={e => { setCategory(e.target.value); setAttrs({}); setProductType(''); setSubcategory('') }}
               required
             >
               <option value="" disabled>選択してください</option>
@@ -167,8 +235,13 @@ export function ProductForm({ product }) {
           </div>
           <div className="form-group">
             <label className="form-label">サブカテゴリ</label>
-            <input className="form-input" name="subcategory" defaultValue={product?.subcategory}
-              placeholder="necklace / ring / tshirt / print ..." />
+            <input
+              className="form-input"
+              value={subcategory}
+              onChange={e => setSubcategory(e.target.value)}
+              placeholder="necklace / ring / tshirt / pop_culture ..."
+            />
+            <span className="form-hint">Jewelry/Apparel は Jewelry Type 選択で自動入力されます</span>
           </div>
           <div className="form-group">
             <label className="form-label">ステータス</label>
@@ -227,39 +300,106 @@ export function ProductForm({ product }) {
         </div>
       </div>
 
-      {/* ══ カテゴリ別属性 ══ */}
+      {/* ══ Jewelry 仕様 ══ */}
       {category === 'jewelry' && (
         <div className="form-section">
           <div className="form-section-title">Jewelry 仕様</div>
           <div className="form-grid">
+
+            {/* Jewelry Type — 最上部 */}
+            <div className="form-group form-col-2">
+              <label className="form-label">Jewelry Type *</label>
+              <select
+                className="form-select"
+                value={productType}
+                onChange={e => setProductType(e.target.value)}
+              >
+                <option value="" disabled>選択してください</option>
+                <option value="Necklace">Necklace（ネックレス）</option>
+                <option value="Ring">Ring（リング）</option>
+                <option value="Bracelet">Bracelet（ブレスレット）</option>
+                <option value="Pierce">Pierce（ピアス）</option>
+                <option value="Pendant">Pendant（ペンダント）</option>
+                <option value="Other">Other（その他）</option>
+              </select>
+            </div>
+
+            {/* 共通スペック */}
             {[
-              ['material',             '素材',                    '925 Sterling Silver'],
-              ['stone_type',           '石種',                    'Moissanite / Diamond'],
-              ['metal_color',          'カラー（メタル）',         'Silver / Gold / Rose Gold'],
-              ['stone_color',          'カラー（石）',             'D Color'],
-              ['stone_size_ct',        'サイズ（ct）',             '1.0ct'],
-              ['stone_clarity',        'クラリティ',               'VVS1'],
-              ['setting',              'セッティング',             'Solitaire'],
-              ['moissanite_hardness',  'モアサナイト硬度',         '9.25'],
-              ['moissanite_ri',        'モアサナイト屈折率（RI）', '2.65-2.69'],
+              ['material',    '素材',           '925 Sterling Silver'],
+              ['metal_color', 'メタルカラー',    'Silver / Gold / Rose Gold'],
+              ['stone_type',  '石種',            'Moissanite / Diamond'],
+              ['stone_color', '石カラー',        'D Color'],
+              ['carat',       'カラット (ct)',    '1.0'],
+              ['stone_clarity','石品質',         'VVS1'],
+              ['setting',     'セッティング',    'Solitaire / Bezel / Pavé'],
             ].map(([key, label, ph]) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
                 <input className="form-input" type="text" value={attrs[key] || ''} onChange={e => setAttr(key, e.target.value)} placeholder={ph} />
               </div>
             ))}
+
+            {/* チェーン長さ（リング以外） */}
+            {productType !== 'Ring' && productType !== 'Pierce' && (
+              <div className="form-group">
+                <label className="form-label">チェーン長さ（標準）</label>
+                <input className="form-input" type="text" value={attrs.chain_length || ''} onChange={e => setAttr('chain_length', e.target.value)} placeholder="40cm / 45cm" />
+                <span className="form-hint">購入可能な長さはバリアントで設定</span>
+              </div>
+            )}
+
+            {/* リングサイズ情報（リングのみ） */}
+            {productType === 'Ring' && (
+              <div className="form-group">
+                <label className="form-label">リングサイズ（参考）</label>
+                <input className="form-input" type="text" value={attrs.ring_size || ''} onChange={e => setAttr('ring_size', e.target.value)} placeholder="7〜17号" />
+                <span className="form-hint">購入可能なサイズはバリアントで設定</span>
+              </div>
+            )}
+
+            {/* モアサナイト専用 */}
+            {(attrs.stone_type || '').toLowerCase().includes('moissanite') && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">モース硬度</label>
+                  <input className="form-input" type="text" value={attrs.moissanite_hardness || '9.25'} onChange={e => setAttr('moissanite_hardness', e.target.value)} placeholder="9.25" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">屈折率（RI）</label>
+                  <input className="form-input" type="text" value={attrs.moissanite_ri || '2.65-2.69'} onChange={e => setAttr('moissanite_ri', e.target.value)} placeholder="2.65-2.69" />
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
+      {/* ══ Apparel 仕様 ══ */}
       {category === 'apparel' && (
         <div className="form-section">
           <div className="form-section-title">Apparel 仕様</div>
           <div className="form-grid">
+
+            {/* Apparel Type */}
+            <div className="form-group form-col-2">
+              <label className="form-label">Apparel Type *</label>
+              <select
+                className="form-select"
+                value={productType}
+                onChange={e => setProductType(e.target.value)}
+              >
+                <option value="" disabled>選択してください</option>
+                <option value="Tshirt">T-Shirt（Tシャツ）</option>
+                <option value="Hoodie">Hoodie（フーディ・パーカー）</option>
+                <option value="Other">Other（その他）</option>
+              </select>
+            </div>
+
             {[
-              ['material',          '素材',         '100% Cotton'],
-              ['color',             'カラー',        'Black / White / Navy'],
-              ['print_method',      'プリント方法', 'DTG / Screen Print'],
+              ['material',          '素材',         '100% Cotton, 400g/m²'],
+              ['fit',               'フィット',      'Oversized / Regular / Slim'],
+              ['print_method',      'プリント方式', 'Screen Print / DTG / Embroidery'],
               ['country_of_origin', '原産国',       'Japan'],
             ].map(([key, label, ph]) => (
               <div className="form-group" key={key}>
@@ -267,23 +407,64 @@ export function ProductForm({ product }) {
                 <input className="form-input" type="text" value={attrs[key] || ''} onChange={e => setAttr(key, e.target.value)} placeholder={ph} />
               </div>
             ))}
+
+            {/* サイズ表 */}
+            <div className="form-group form-col-2">
+              <label className="form-label">サイズ表</label>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-2, #1a1a1a)' }}>
+                      {['サイズ', '着丈 (cm)', '身幅 (cm)', '袖丈 (cm)'].map(h => (
+                        <th key={h} style={{ padding: '6px 8px', border: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-2)', fontWeight: 500 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {['S', 'M', 'L', 'XL', 'XXL'].map(sz => (
+                      <tr key={sz}>
+                        <td style={{ padding: '4px 8px', border: '1px solid var(--border)', textAlign: 'center', color: 'var(--text-2)', fontWeight: 600, background: 'var(--bg-2, #1a1a1a)' }}>{sz}</td>
+                        {['length', 'width', 'sleeve'].map(dim => {
+                          const key = `size_${sz.toLowerCase()}_${dim}`
+                          return (
+                            <td key={dim} style={{ padding: '2px 4px', border: '1px solid var(--border)' }}>
+                              <input
+                                className="form-input"
+                                type="text"
+                                value={attrs[key] || ''}
+                                onChange={e => setAttr(key, e.target.value)}
+                                placeholder="—"
+                                style={{ fontSize: 12, textAlign: 'center', padding: '4px', minWidth: 0 }}
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <span className="form-hint">未入力の項目は商品ページに表示されません</span>
+            </div>
+
             <div className="form-hint" style={{ gridColumn: '1 / -1' }}>
-              サイズ（S/M/L）はバリアントセクションで登録してください
+              カラー・サイズの在庫はバリアントセクション（color_size タイプ）で登録してください
             </div>
           </div>
         </div>
       )}
 
+      {/* ══ Art 仕様 ══ */}
       {category === 'art' && (
         <div className="form-section">
           <div className="form-section-title">Art 仕様</div>
           <div className="form-grid">
             {[
-              ['art_size',      '作品サイズ',          'A2 / 60×90cm'],
-              ['edition',       'エディション表記',     'Limited 30 / Open Edition'],
-              ['edition_total', '限定数（数値）',       '30'],
-              ['serial_number', 'シリアル番号',         '1/30'],
-              ['medium',        'メディウム',           'UV Acrylic Print on Aluminum'],
+              ['medium',        'メディウム・素材',      'UV Acrylic Print on Aluminum'],
+              ['size',          'サイズ',               '90×60cm'],
+              ['edition',       'エディション表記',      'Limited 30 / Open Edition'],
+              ['edition_total', '限定数（数値）',        '30'],
+              ['serial_number', 'シリアル番号',          '1/30'],
             ].map(([key, label, ph]) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -292,8 +473,8 @@ export function ProductForm({ product }) {
             ))}
             <div className="form-group form-col-2">
               <label className="form-label" style={{ marginBottom: 8 }}>オプション</label>
-              <div style={{ display: 'flex', gap: 20 }}>
-                {[['signed','サイン入り'],['framed','額装'],['certificate','証明書付']].map(([key, label]) => (
+              <div style={{ display: 'flex', gap: 24 }}>
+                {[['signed','サイン入り'],['framed','額装'],['certificate','真正証明書付']].map(([key, label]) => (
                   <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
                     <input type="checkbox" checked={!!attrs[key]} onChange={e => setAttr(key, e.target.checked)} style={{ width: 14, height: 14 }} />
                     {label}
@@ -345,7 +526,6 @@ export function ProductForm({ product }) {
       {/* ══ タグ ══ */}
       <div className="form-section">
         <div className="form-section-title">タグ</div>
-        {/* 選択済みチップ */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {selectedTags.map(t => (
             <span key={t.name} style={{
@@ -364,7 +544,6 @@ export function ProductForm({ product }) {
           {selectedTags.length === 0 && <span style={{ fontSize: 13, color: 'var(--text-3)' }}>タグ未設定</span>}
         </div>
 
-        {/* 既存タグ一覧 */}
         {allTags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
             {allTags.map(t => {
@@ -389,7 +568,6 @@ export function ProductForm({ product }) {
           </div>
         )}
 
-        {/* 新規タグ入力 */}
         <div style={{ display: 'flex', gap: 8, maxWidth: 360 }}>
           <input
             className="form-input"
@@ -408,24 +586,29 @@ export function ProductForm({ product }) {
       <div className="form-section">
         <div className="form-section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>バリアント（サイズ・カラー・長さ等）</span>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={addVariant}>+ バリアント追加</button>
+          <button type="button" className="btn btn-ghost btn-sm"
+            onClick={() => setVariants(v => [...v, { sku: '', type: defaultVariantType(), label: '', label_ja: '', stock_count: 0, price_modifier: 0 }])}>
+            + バリアント追加
+          </button>
         </div>
         {variants.length === 0 ? (
           <div style={{ color: 'var(--text-3)', fontSize: 13 }}>バリアントなし（在庫数は上の「在庫数」フィールドを使用）</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 70px 90px 90px 36px', gap: 6, fontSize: 11, color: 'var(--text-3)', padding: '0 2px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.2fr 70px 90px 90px 36px', gap: 6, fontSize: 11, color: 'var(--text-3)', padding: '0 2px' }}>
               <span>ラベル（英）</span><span>ラベル（日）</span><span>タイプ</span><span>在庫</span><span>追加料金</span><span>SKU</span><span />
             </div>
             {variants.map((v, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 70px 90px 90px 36px', gap: 6, alignItems: 'center' }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.2fr 70px 90px 90px 36px', gap: 6, alignItems: 'center' }}>
                 <input className="form-input" placeholder="40cm / Black M" value={v.label} onChange={e => updateVariant(i,'label',e.target.value)} style={{ fontSize: 12 }} />
                 <input className="form-input" placeholder="40センチ" value={v.label_ja} onChange={e => updateVariant(i,'label_ja',e.target.value)} style={{ fontSize: 12 }} />
                 <select className="form-select" value={v.type} onChange={e => updateVariant(i,'type',e.target.value)} style={{ fontSize: 12 }}>
-                  <option value="size">size</option>
-                  <option value="color_size">color_size</option>
-                  <option value="length">length</option>
-                  <option value="frame">frame</option>
+                  <option value="ring_size">Ring Size（号数）</option>
+                  <option value="chain_length">Chain Length（長さ）</option>
+                  <option value="size">Size（サイズ）</option>
+                  <option value="color_size">Color / Size</option>
+                  <option value="frame">Frame（額装）</option>
+                  <option value="length">Length（旧形式）</option>
                 </select>
                 <input className="form-input" type="number" min="0" value={v.stock_count} onChange={e => updateVariant(i,'stock_count',e.target.value)} style={{ fontSize: 12 }} />
                 <input className="form-input" type="number" value={v.price_modifier} onChange={e => updateVariant(i,'price_modifier',e.target.value)} style={{ fontSize: 12 }} />
@@ -442,10 +625,8 @@ export function ProductForm({ product }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   ImageSlot — 1枚ごとの画像スロット（Supabase Storage へアップロード）
-   アップロード前にCanvasでWebP変換・最大1200px・品質85%に圧縮
+   ImageSlot — Cloudinary アップロード
 ═══════════════════════════════════════════════════════════ */
-
 function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
   const inputRef   = useRef()
   const [uploading, setUploading] = useState(false)
@@ -467,7 +648,6 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
       fd.append('file', file)
       fd.append('upload_preset', uploadPreset)
       fd.append('folder', 'products')
-      // Cloudinary側で自動WebP変換・最適化するため f_auto,q_auto を付与
       fd.append('transformation', 'f_auto,q_auto,w_1200')
 
       const res = await fetch(
@@ -477,7 +657,6 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
       const json = await res.json()
       if (!res.ok || json.error) throw new Error(json.error?.message || 'Upload failed')
 
-      // f_auto,q_auto で最適化されたURLを保存
       const url = json.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/')
       onChange(url)
     } catch (err) {
