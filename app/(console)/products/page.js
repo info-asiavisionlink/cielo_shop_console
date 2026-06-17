@@ -1,4 +1,5 @@
-import { getProducts, toggleProductStatus, toggleProductFeatured, deleteProduct } from '@/actions/products'
+import { getProducts } from '@/actions/products'
+import { StatusToggle, FeaturedToggle, DeleteButton } from './_interactive'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -104,43 +105,6 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       </div>
     </>
-  )
-}
-
-/* ── Inline forms for toggle/delete ── */
-function StatusToggle({ id, status }) {
-  const isActive = status === 'active'
-  return (
-    <form action={toggleProductStatus.bind(null, id, status)}>
-      <button className={`badge badge-${status}`} type="submit" title="クリックで切替">
-        {status === 'active' ? '公開中' : status === 'draft' ? '下書き' : 'アーカイブ'}
-      </button>
-    </form>
-  )
-}
-
-function FeaturedToggle({ id, featured }) {
-  return (
-    <form action={toggleProductFeatured.bind(null, id, featured)}>
-      <button
-        type="submit"
-        style={{ fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', opacity: featured ? 1 : 0.25 }}
-        title="注目商品トグル"
-      >
-        ★
-      </button>
-    </form>
-  )
-}
-
-function DeleteButton({ id, name }) {
-  return (
-    <form
-      action={deleteProduct.bind(null, id)}
-      onSubmit={e => { if (!confirm(`「${name}」を削除しますか？`)) e.preventDefault() }}
-    >
-      <button type="submit" className="btn btn-danger btn-sm">削除</button>
-    </form>
   )
 }
 
