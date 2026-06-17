@@ -1,59 +1,75 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 
+const SESSION_KEY = 'cielo_debug_log'
+
 export default function LoginPage() {
-  const [email, setEmail]     = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]     = useState('')
-  const [loading, setLoading] = useState(false)
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
   const [debugLines, setDebugLines] = useState([])
+
+  // ページ再表示時にsessionStorageからデバッグ履歴を復元
+  useEffect(() => {
+    const saved = sessionStorage.getItem(SESSION_KEY)
+    if (saved) setDebugLines(JSON.parse(saved))
+  }, [])
 
   function addDebug(line) {
     console.log(line)
-    setDebugLines(prev => [...prev, line])
+    setDebugLines(prev => {
+      const next = [...prev, line]
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  function clearDebug() {
+    sessionStorage.removeItem(SESSION_KEY)
+    setDebugLines([])
+    setError('')
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError('')
-    setDebugLines([])
+    clearDebug()
     setLoading(true)
 
     const url  = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    addDebug('LOGIN_START')
+    addDebug('LOGIN_START ' + new Date().toISOString())
     addDebug('URL: ' + (url ?? '[MISSING]'))
     addDebug('ANON: ' + (anon ? anon.slice(0, 20) + '...' : '[MISSING]'))
 
-    if (!url)  { setError('[ENV ERROR] NEXT_PUBLIC_SUPABASE_URL が未設定です'); setLoading(false); return }
-    if (!anon) { setError('[ENV ERROR] NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定です'); setLoading(false); return }
+    if (!url)  { setError('[ENV ERROR] NEXT_PUBLIC_SUPABASE_URL が未設定'); setLoading(false); return }
+    if (!anon) { setError('[ENV ERROR] NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定'); setLoading(false); return }
 
     try {
       const supabase = createClient()
       addDebug('SIGNIN_CALL')
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
-      addDebug('AUTH_RESPONSE: ' + JSON.stringify({ user: data?.user?.id ?? null, session: !!data?.session }))
+
+      addDebug('AUTH_RESPONSE user=' + (data?.user?.id ?? 'null') + ' session=' + !!data?.session)
       addDebug('AUTH_ERROR: ' + (err ? err.message : 'null'))
 
       if (err) {
-        // eslint-disable-next-line no-alert
-        alert('[DEBUG] AUTH_ERROR: ' + err.message)
-        setError(err.message)
+        setError('AUTH_ERROR: ' + err.message)
+        addDebug('→ STOPPING (error)')
         return
       }
 
-      console.log('LOGIN_SUCCESS')
-      console.log('SESSION', data.session)
-      console.log('USER', data.user)
-      addDebug('LOGIN_SUCCESS → /dashboard')
+      addDebug('LOGIN_SUCCESS')
+      addDebug('SESSION_TOKEN: ' + (data.session?.access_token?.slice(0, 30) ?? 'null') + '...')
+      addDebug('USER_EMAIL: ' + (data.user?.email ?? 'null'))
+      addDebug('USER_CONFIRMED: ' + (data.user?.email_confirmed_at ? 'YES' : 'NO'))
+      addDebug('→ navigating to /dashboard')
       window.location.href = '/dashboard'
     } catch (err) {
       addDebug('EXCEPTION: ' + err.message)
-      // eslint-disable-next-line no-alert
-      alert('[DEBUG] EXCEPTION: ' + err.message)
-      setError(err.message ?? 'ログインに失敗しました。')
+      setError('EXCEPTION: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -71,10 +87,20 @@ export default function LoginPage() {
           <p>管理者アカウントでログイン</p>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {/* エラーメッセージ（大きく赤で表示） */}
+        {error && (
+          <div style={{ background: '#fee', border: '2px solid #c00', borderRadius: 6, padding: '10px 14px', marginBottom: 12, color: '#c00', fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all' }}>
+            {error}
+          </div>
+        )}
 
+        {/* デバッグパネル（sessionStorage から復元するため画面遷移後も残る） */}
         {debugLines.length > 0 && (
-          <div style={{ background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: 11, padding: 8, borderRadius: 4, marginBottom: 12, maxHeight: 140, overflowY: 'auto' }}>
+          <div style={{ background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: 11, padding: 8, borderRadius: 4, marginBottom: 12, maxHeight: 180, overflowY: 'auto' }}>
+            <div style={{ color: '#888', marginBottom: 4 }}>
+              --- DEBUG LOG (ページ再表示後も保持) ---
+              <button onClick={clearDebug} style={{ marginLeft: 8, fontSize: 10, cursor: 'pointer', background: 'none', color: '#888', border: '1px solid #444' }}>クリア</button>
+            </div>
             {debugLines.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         )}
