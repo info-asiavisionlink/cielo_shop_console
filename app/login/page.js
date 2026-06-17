@@ -14,15 +14,26 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const supabase = createClient()
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password })
-    if (err) {
-      setError('メールアドレスまたはパスワードが正しくありません。')
+    try {
+      const supabase = createClient()
+      console.log('LOGIN_START')
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
+      if (err) {
+        console.log('LOGIN_ERROR', err)
+        setError('メールアドレスまたはパスワードが正しくありません。')
+        return
+      }
+      console.log('LOGIN_SUCCESS')
+      console.log('SESSION', data.session)
+      // refresh → push の順でサーバーキャッシュを更新してから遷移
+      router.refresh()
+      router.push('/dashboard')
+    } catch (err) {
+      console.log('LOGIN_ERROR', err)
+      setError('ログインに失敗しました。しばらくしてからお試しください。')
+    } finally {
       setLoading(false)
-      return
     }
-    router.push('/dashboard')
-    router.refresh()
   }
 
   return (
