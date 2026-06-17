@@ -9,7 +9,6 @@ export async function middleware(request) {
   const isProtected = PROTECTED.some(p => pathname === p || pathname.startsWith(p + '/'))
   const isLoginPage = pathname === '/login'
 
-  // 保護対象でもログインページでもない場合はそのまま通過
   if (!isProtected && !isLoginPage) {
     return NextResponse.next()
   }
@@ -33,29 +32,14 @@ export async function middleware(request) {
     }
   )
 
-  const cookieNames = request.cookies.getAll().map(c => c.name)
-  console.log('[MIDDLEWARE] cookies received:', cookieNames.join(', ') || '(none)', 'path:', pathname)
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError) {
-    console.log('[MIDDLEWARE] AUTH_ERROR:', authError.message, 'path:', pathname)
-  }
-
-  if (user) {
-    console.log('[MIDDLEWARE] SESSION_FOUND user.id:', user.id, 'path:', pathname)
-  } else {
-    console.log('[MIDDLEWARE] SESSION_NOT_FOUND path:', pathname)
-  }
-
-  // 未ログイン → 保護ページへのアクセスを /login へリダイレクト
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // ログイン済み → /login へのアクセスを /dashboard へリダイレクト
   if (user && isLoginPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
