@@ -433,31 +433,6 @@ export function ProductForm({ product }) {
    アップロード前にCanvasでWebP変換・最大1200px・品質85%に圧縮
 ═══════════════════════════════════════════════════════════ */
 
-async function compressToWebP(file, maxDim = 1200, quality = 0.85) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    const objectUrl = URL.createObjectURL(file)
-    img.onload = () => {
-      let { width, height } = img
-      if (width > maxDim || height > maxDim) {
-        if (width >= height) { height = Math.round(height * maxDim / width); width = maxDim }
-        else                 { width  = Math.round(width  * maxDim / height); height = maxDim }
-      }
-      const canvas = document.createElement('canvas')
-      canvas.width  = width
-      canvas.height = height
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-      URL.revokeObjectURL(objectUrl)
-      canvas.toBlob(blob => {
-        if (!blob) { reject(new Error('Canvas toBlob failed')); return }
-        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
-      }, 'image/webp', quality)
-    }
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')) }
-    img.src = objectUrl
-  })
-}
-
 function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
   const inputRef   = useRef()
   const [uploading, setUploading] = useState(false)
@@ -470,18 +445,28 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
     setUploading(true)
     setError('')
     try {
-      setProgress('圧縮中…')
-      const compressed = await compressToWebP(file)
-      const origKB = Math.round(file.size / 1024)
-      const compKB = Math.round(compressed.size / 1024)
-      setProgress(`アップロード中… (${origKB}KB → ${compKB}KB)`)
+      setProgress('アップロード中…')
+      const cloudName    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+      const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+      if (!cloudName || !uploadPreset) throw new Error('Cloudinary 環境変数が未設定です')
 
       const fd = new FormData()
-      fd.append('file', compressed)
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      fd.append('file', file)
+      fd.append('upload_preset', uploadPreset)
+      fd.append('folder', 'products')
+      // Cloudinary側で自動WebP変換・最適化するため f_auto,q_auto を付与
+      fd.append('transformation', 'f_auto,q_auto,w_1200')
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: 'POST', body: fd }
+      )
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Upload failed')
-      onChange(json.url)
+      if (!res.ok || json.error) throw new Error(json.error?.message || 'Upload failed')
+
+      // f_auto,q_auto で最適化されたURLを保存
+      const url = json.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/')
+      onChange(url)
     } catch (err) {
       setError(err.message)
     } finally {
