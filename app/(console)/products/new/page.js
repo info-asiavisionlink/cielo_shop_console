@@ -430,10 +430,38 @@ export function ProductForm({ product }) {
 
 /* ═══════════════════════════════════════════════════════════
    ImageSlot — 1枚ごとの画像スロット（Supabase Storage へアップロード）
+   アップロード前にCanvasでWebP変換・最大1200px・品質85%に圧縮
 ═══════════════════════════════════════════════════════════ */
+
+async function compressToWebP(file, maxDim = 1200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) { height = Math.round(height * maxDim / width); width = maxDim }
+        else                 { width  = Math.round(width  * maxDim / height); height = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width  = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      URL.revokeObjectURL(objectUrl)
+      canvas.toBlob(blob => {
+        if (!blob) { reject(new Error('Canvas toBlob failed')); return }
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
+      }, 'image/webp', quality)
+    }
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Image load failed')) }
+    img.src = objectUrl
+  })
+}
+
 function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
   const inputRef   = useRef()
   const [uploading, setUploading] = useState(false)
+  const [progress,  setProgress]  = useState('')
   const [error,     setError]     = useState('')
 
   async function handleFile(e) {
@@ -442,8 +470,14 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
     setUploading(true)
     setError('')
     try {
+      setProgress('圧縮中…')
+      const compressed = await compressToWebP(file)
+      const origKB = Math.round(file.size / 1024)
+      const compKB = Math.round(compressed.size / 1024)
+      setProgress(`アップロード中… (${origKB}KB → ${compKB}KB)`)
+
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', compressed)
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Upload failed')
@@ -452,6 +486,7 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
       setError(err.message)
     } finally {
       setUploading(false)
+      setProgress('')
       if (inputRef.current) inputRef.current.value = ''
     }
   }
@@ -479,7 +514,7 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
         ) : (
           <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 12 }}>
             {uploading ? (
-              <span>アップロード中…</span>
+              <span style={{ fontSize: 11 }}>{progress || 'アップロード中…'}</span>
             ) : (
               <>
                 <div style={{ fontSize: 24, marginBottom: 4 }}>＋</div>
