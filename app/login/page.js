@@ -1,39 +1,58 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail]       = useState('')
+  const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [error, setError]     = useState('')
+  const [loading, setLoading] = useState(false)
+  const [debugLines, setDebugLines] = useState([])
+
+  function addDebug(line) {
+    console.log(line)
+    setDebugLines(prev => [...prev, line])
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setDebugLines([])
     setLoading(true)
+
+    const url  = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    addDebug('LOGIN_START')
+    addDebug('URL: ' + (url ?? '[MISSING]'))
+    addDebug('ANON: ' + (anon ? anon.slice(0, 20) + '...' : '[MISSING]'))
+
+    if (!url)  { setError('[ENV ERROR] NEXT_PUBLIC_SUPABASE_URL が未設定です'); setLoading(false); return }
+    if (!anon) { setError('[ENV ERROR] NEXT_PUBLIC_SUPABASE_ANON_KEY が未設定です'); setLoading(false); return }
+
     try {
       const supabase = createClient()
-      console.log('LOGIN_START')
+      addDebug('SIGNIN_CALL')
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
+      addDebug('AUTH_RESPONSE: ' + JSON.stringify({ user: data?.user?.id ?? null, session: !!data?.session }))
+      addDebug('AUTH_ERROR: ' + (err ? err.message : 'null'))
+
       if (err) {
-        console.log('LOGIN_ERROR', err)
         // eslint-disable-next-line no-alert
-        alert('[DEBUG] LOGIN_ERROR: ' + err.message)
+        alert('[DEBUG] AUTH_ERROR: ' + err.message)
         setError(err.message)
         return
       }
+
       console.log('LOGIN_SUCCESS')
       console.log('SESSION', data.session)
       console.log('USER', data.user)
-      // hard navigation でセッションcookieを確実にサーバーへ送る
+      addDebug('LOGIN_SUCCESS → /dashboard')
       window.location.href = '/dashboard'
     } catch (err) {
-      console.log('LOGIN_ERROR', err)
+      addDebug('EXCEPTION: ' + err.message)
       // eslint-disable-next-line no-alert
-      alert('[DEBUG] LOGIN_EXCEPTION: ' + err.message)
+      alert('[DEBUG] EXCEPTION: ' + err.message)
       setError(err.message ?? 'ログインに失敗しました。')
     } finally {
       setLoading(false)
@@ -53,6 +72,12 @@ export default function LoginPage() {
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
+
+        {debugLines.length > 0 && (
+          <div style={{ background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: 11, padding: 8, borderRadius: 4, marginBottom: 12, maxHeight: 140, overflowY: 'auto' }}>
+            {debugLines.map((l, i) => <div key={i}>{l}</div>)}
+          </div>
+        )}
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
