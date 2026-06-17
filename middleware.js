@@ -33,7 +33,14 @@ export async function middleware(request) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieNames = request.cookies.getAll().map(c => c.name)
+  console.log('[MIDDLEWARE] cookies received:', cookieNames.join(', ') || '(none)', 'path:', pathname)
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError) {
+    console.log('[MIDDLEWARE] AUTH_ERROR:', authError.message, 'path:', pathname)
+  }
 
   if (user) {
     console.log('[MIDDLEWARE] SESSION_FOUND user.id:', user.id, 'path:', pathname)
