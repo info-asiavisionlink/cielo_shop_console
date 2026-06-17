@@ -4,13 +4,19 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  let stats = { activeProducts: 0, totalOrders: 0, pendingOrders: 0, totalRevenue: 0, totalCustomers: 0, recentOrders: [] }
+  let stats = {
+    activeProducts: 0, totalOrders: 0, pendingOrders: 0, shippedPending: 0,
+    totalRevenue: 0, monthRevenue: 0, totalCustomers: 0, recentOrders: [],
+  }
   try { stats = await getDashboardStats() } catch {}
 
   const STATUS_MAP = {
-    pending: '未確認', paid: '支払い済', processing: '処理中',
+    pending: '未確認', paid: '支払い済', processing: '梱包中',
     shipped: '発送済', delivered: '配達完了', cancelled: 'キャンセル', refunded: '返金',
   }
+
+  const now = new Date()
+  const monthLabel = `${now.getFullYear()}年${now.getMonth() + 1}月`
 
   return (
     <>
@@ -21,11 +27,23 @@ export default async function DashboardPage() {
         </div>
       </div>
       <div className="page-content">
-        <div className="stat-grid">
+
+        {/* KPI Row 1 — 売上 */}
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Revenue</div>
+        <div className="stat-grid" style={{ marginBottom: 20 }}>
           <div className="stat-card">
-            <div className="stat-label">公開中の商品</div>
-            <div className="stat-value blue">{stats.activeProducts}</div>
+            <div className="stat-label">累計売上</div>
+            <div className="stat-value gold">¥{stats.totalRevenue.toLocaleString('ja-JP')}</div>
           </div>
+          <div className="stat-card">
+            <div className="stat-label">{monthLabel} 売上</div>
+            <div className="stat-value gold">¥{stats.monthRevenue.toLocaleString('ja-JP')}</div>
+          </div>
+        </div>
+
+        {/* KPI Row 2 — 注文・発送 */}
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Orders & Shipping</div>
+        <div className="stat-grid" style={{ marginBottom: 20 }}>
           <div className="stat-card">
             <div className="stat-label">総注文数</div>
             <div className="stat-value">{stats.totalOrders}</div>
@@ -37,10 +55,19 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">総売上</div>
-            <div className="stat-value gold">
-              ¥{stats.totalRevenue.toLocaleString('ja-JP')}
+            <div className="stat-label">追跡確認待ち</div>
+            <div className="stat-value" style={{ color: stats.shippedPending > 0 ? 'var(--blue)' : undefined }}>
+              {stats.shippedPending}
             </div>
+          </div>
+        </div>
+
+        {/* KPI Row 3 — 商品・顧客 */}
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Catalog & Customers</div>
+        <div className="stat-grid" style={{ marginBottom: 28 }}>
+          <div className="stat-card">
+            <div className="stat-label">公開中の商品</div>
+            <div className="stat-value blue">{stats.activeProducts}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">顧客数</div>
@@ -48,6 +75,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* Recent Orders */}
         <div className="table-wrap">
           <div className="table-header">
             <span className="table-title">最近の注文</span>
