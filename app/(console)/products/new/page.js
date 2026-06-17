@@ -233,13 +233,15 @@ export function ProductForm({ product }) {
           <div className="form-section-title">Jewelry 仕様</div>
           <div className="form-grid">
             {[
-              ['material',      '素材',             '925 Sterling Silver'],
-              ['stone_type',    '石種',             'Moissanite / Diamond'],
-              ['metal_color',   'カラー（メタル）', 'Silver / Gold / Rose Gold'],
-              ['stone_color',   'カラー（石）',     'D Color'],
-              ['stone_size_ct', 'サイズ（ct）',     '1.0ct'],
-              ['stone_clarity', 'クラリティ',       'VVS1'],
-              ['setting',       'セッティング',     'Solitaire'],
+              ['material',             '素材',                    '925 Sterling Silver'],
+              ['stone_type',           '石種',                    'Moissanite / Diamond'],
+              ['metal_color',          'カラー（メタル）',         'Silver / Gold / Rose Gold'],
+              ['stone_color',          'カラー（石）',             'D Color'],
+              ['stone_size_ct',        'サイズ（ct）',             '1.0ct'],
+              ['stone_clarity',        'クラリティ',               'VVS1'],
+              ['setting',              'セッティング',             'Solitaire'],
+              ['moissanite_hardness',  'モアサナイト硬度',         '9.25'],
+              ['moissanite_ri',        'モアサナイト屈折率（RI）', '2.65-2.69'],
             ].map(([key, label, ph]) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -277,10 +279,11 @@ export function ProductForm({ product }) {
           <div className="form-section-title">Art 仕様</div>
           <div className="form-grid">
             {[
-              ['art_size',      '作品サイズ',   'A2 / 60×90cm'],
-              ['edition_total', '限定数',       '50'],
-              ['serial_number', 'シリアル番号', '1/50'],
-              ['medium',        'メディウム',   'Digital Print / Oil on Canvas'],
+              ['art_size',      '作品サイズ',          'A2 / 60×90cm'],
+              ['edition',       'エディション表記',     'Limited 30 / Open Edition'],
+              ['edition_total', '限定数（数値）',       '30'],
+              ['serial_number', 'シリアル番号',         '1/30'],
+              ['medium',        'メディウム',           'UV Acrylic Print on Aluminum'],
             ].map(([key, label, ph]) => (
               <div className="form-group" key={key}>
                 <label className="form-label">{label}</label>
@@ -321,6 +324,16 @@ export function ProductForm({ product }) {
           <div className="form-group">
             <label className="form-label">ブランドコピー（日）</label>
             <textarea className="form-textarea" name="story_ja" defaultValue={product?.story_ja} rows={2} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">SEOタイトル</label>
+            <input className="form-input" name="seo_title" defaultValue={product?.seo_title} placeholder="CIELO Solitaire Necklace — ¥28,600 | CIELO" />
+            <span className="form-hint">Googleの検索結果に表示されるタイトル</span>
+          </div>
+          <div className="form-group">
+            <label className="form-label">SEO説明文</label>
+            <input className="form-input" name="seo_description" defaultValue={product?.seo_description} placeholder="一粒のモアサナイトが放つ光。¥28,600（税込）" />
+            <span className="form-hint">Googleの検索結果に表示される説明文（80文字以内推奨）</span>
           </div>
           <div className="form-group">
             <label className="form-label">OGP画像URL</label>

@@ -60,9 +60,11 @@ export async function createProduct(formData) {
     featured:       formData.get('featured') === 'true',
     description:    formData.get('description')     || null,
     description_ja: formData.get('description_ja') || null,
-    story:          formData.get('story')           || null,
-    story_ja:       formData.get('story_ja')        || null,
-    og_image_url:   formData.get('og_image_url')    || null,
+    story:           formData.get('story')            || null,
+    story_ja:        formData.get('story_ja')         || null,
+    og_image_url:    formData.get('og_image_url')     || null,
+    seo_title:       formData.get('seo_title')        || null,
+    seo_description: formData.get('seo_description')  || null,
     attributes,
   }
 
@@ -95,9 +97,11 @@ export async function updateProduct(id, formData) {
     featured:       formData.get('featured') === 'true',
     description:    formData.get('description')     || null,
     description_ja: formData.get('description_ja') || null,
-    story:          formData.get('story')           || null,
-    story_ja:       formData.get('story_ja')        || null,
-    og_image_url:   formData.get('og_image_url')    || null,
+    story:           formData.get('story')            || null,
+    story_ja:        formData.get('story_ja')         || null,
+    og_image_url:    formData.get('og_image_url')     || null,
+    seo_title:       formData.get('seo_title')        || null,
+    seo_description: formData.get('seo_description')  || null,
     attributes,
   }
 
