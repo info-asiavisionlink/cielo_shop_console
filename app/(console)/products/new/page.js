@@ -648,7 +648,6 @@ function ImageSlot({ index, value, alt, isThumbnail, onChange }) {
       fd.append('file', file)
       fd.append('upload_preset', uploadPreset)
       fd.append('folder', 'products')
-      fd.append('transformation', 'f_auto,q_auto,w_1200')
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
