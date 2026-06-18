@@ -1,6 +1,7 @@
 'use server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { revalidatePath } from 'next/cache'
+import { sendShippingNotification } from '@/lib/email'
 
 export async function getOrders(status = 'all') {
   const db = createAdminClient()
@@ -41,6 +42,23 @@ export async function updateTracking(id, tracking_number) {
     .update({ tracking_number, status: 'shipped' })
     .eq('id', id)
   if (error) throw new Error(error.message)
+
+  // 発送通知メール送信
+  const { data: order } = await db.from('orders')
+    .select('customer_email, customer_name, order_items(product_name, variant_label, quantity, unit_price, subtotal)')
+    .eq('id', id)
+    .single()
+
+  if (order?.customer_email) {
+    await sendShippingNotification({
+      to:             order.customer_email,
+      customerName:   order.customer_name,
+      orderId:        id,
+      trackingNumber: tracking_number,
+      items:          order.order_items || [],
+    })
+  }
+
   revalidatePath('/orders')
   revalidatePath('/shipping')
 }
