@@ -3,8 +3,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { getOrders, updateOrderStatus, updateTracking, updateOrderNotes } from '@/actions/orders'
 
 const ENG_TYPE_LABELS = {
+  initials:      'イニシャル',
+  name:          'お名前',
   personal_mark: 'イニシャル・お名前',
-  date:          '日付刻印',
+  date:          '日付',
   short_message: 'メッセージ',
 }
 
@@ -235,6 +237,9 @@ export default function OrdersPage() {
                       <td onClick={e => e.stopPropagation()}>
                         <div className="td-name">{o.customer_name || '—'}</div>
                         <div className="td-mono">{o.customer_email || ''}</div>
+                        {(o.order_items ?? []).some(i => i.engraving_type) && (
+                          <div style={{ fontSize: 10, color: 'var(--gold)', letterSpacing: '0.08em', marginTop: 2, opacity: 0.7 }}>刻印あり</div>
+                        )}
                       </td>
                       <td className="td-price">¥{(o.total ?? 0).toLocaleString('ja-JP')}</td>
                       <td onClick={e => e.stopPropagation()}>
@@ -301,17 +306,29 @@ export default function OrdersPage() {
                                             {item.variant_label}
                                           </div>
                                         )}
-                                        {item.engraving_type && (
-                                          <div style={{ marginTop: 4, padding: '4px 0', borderTop: '1px solid var(--border)' }}>
-                                            <div style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.08em' }}>
-                                              {ENG_TYPE_LABELS[item.engraving_type] || item.engraving_type}
+                                        {item.engraving_type ? (
+                                          <div style={{ marginTop: 6, padding: '6px 8px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.15)', borderRadius: 3 }}>
+                                            <div style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 5, textTransform: 'uppercase' }}>
+                                              Personal Inscription
                                             </div>
-                                            <div style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: '0.06em' }}>
-                                              {item.engraving_text || '—'}
+                                            <div style={{ display: 'flex', gap: 6, marginBottom: 2, alignItems: 'baseline' }}>
+                                              <span style={{ fontSize: 9, color: 'var(--text-3)', minWidth: 38, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Type</span>
+                                              <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{ENG_TYPE_LABELS[item.engraving_type] || item.engraving_type}</span>
                                             </div>
+                                            {item.engraving_text && (
+                                              <div style={{ display: 'flex', gap: 6, marginBottom: 2, alignItems: 'baseline' }}>
+                                                <span style={{ fontSize: 9, color: 'var(--text-3)', minWidth: 38, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Text</span>
+                                                <span style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, letterSpacing: '0.08em' }}>{item.engraving_text}</span>
+                                              </div>
+                                            )}
+                                            {item.inscription_location && (
+                                              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                                                <span style={{ fontSize: 9, color: 'var(--text-3)', minWidth: 38, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Loc</span>
+                                                <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{item.inscription_location}</span>
+                                              </div>
+                                            )}
                                           </div>
-                                        )}
-                                        {!item.engraving_type && (
+                                        ) : (
                                           <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontStyle: 'italic' }}>
                                             刻印なし
                                           </div>

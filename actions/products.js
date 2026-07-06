@@ -41,6 +41,14 @@ export async function getTags() {
   return data ?? []
 }
 
+function parseTypesJson(raw) {
+  try {
+    if (!raw || raw === '[]' || raw === 'null') return null
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) && arr.length ? arr : null
+  } catch { return null }
+}
+
 export async function createProduct(formData) {
   const db = createAdminClient()
   const name = formData.get('name')
@@ -68,6 +76,8 @@ export async function createProduct(formData) {
     engraving_available: formData.get('engraving_available') === 'true',
     engraving_required:  formData.get('engraving_required')  === 'true',
     engraving_max_chars: parseInt(formData.get('engraving_max_chars') || '20', 10) || 20,
+    inscription_available_types: parseTypesJson(formData.get('inscription_available_types')),
+    inscription_location: formData.get('inscription_location') || null,
     attributes:          {},
   }
 
@@ -108,6 +118,8 @@ export async function updateProduct(id, formData) {
     engraving_available: formData.get('engraving_available') === 'true',
     engraving_required:  formData.get('engraving_required')  === 'true',
     engraving_max_chars: parseInt(formData.get('engraving_max_chars') || '20', 10) || 20,
+    inscription_available_types: parseTypesJson(formData.get('inscription_available_types')),
+    inscription_location: formData.get('inscription_location') || null,
   }
 
   const { error } = await db.from('products').update(payload).eq('id', id)
