@@ -202,9 +202,15 @@ export async function POST(request) {
       draft = await analyzeWithVision(openai, buffer)
     }
   } catch (e) {
-    console.error('[CIELO AI] OpenAI error:', e.message, e.status)
-    if (e.status === 401) return NextResponse.json({ error: 'OpenAI API設定を確認してください。' }, { status: 502 })
-    if (e.status === 429) return NextResponse.json({ error: 'しばらくしてから再試行してください（レート制限）。' }, { status: 429 })
+    console.error('[CIELO AI] OpenAI error:', e.message, 'status:', e.status)
+    if (!process.env.OPENAI_API_KEY && !process.env.OPNEAI_API_KEY) {
+      return NextResponse.json({ error: 'OPENAI_API_KEY が Vercel 環境変数に設定されていません。Vercel Dashboard → Settings → Environment Variables で追加してください。' }, { status: 502 })
+    }
+    if (e.message?.includes('not configured')) {
+      return NextResponse.json({ error: 'OpenAI API Key が設定されていません。Vercel Dashboard の Environment Variables を確認してください。' }, { status: 502 })
+    }
+    if (e.status === 401) return NextResponse.json({ error: 'OpenAI API Key が無効です。Vercel Dashboard の Environment Variables を確認してください。' }, { status: 502 })
+    if (e.status === 429) return NextResponse.json({ error: 'しばらくしてから再試行してください（OpenAI レート制限）。' }, { status: 429 })
     return NextResponse.json({ error: '商品の解析に失敗しました。PDFを確認して、もう一度実行してください。' }, { status: 502 })
   }
 
