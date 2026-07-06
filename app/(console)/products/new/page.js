@@ -89,10 +89,13 @@ const TYPE_TO_SUBCAT = {
    ProductForm — 新規・編集 共用コンポーネント
 ═══════════════════════════════════════════════════════════ */
 export function ProductForm({ product }) {
-  const [category,    setCategory]    = useState(product?.category || '')
-  const [productType, setProductType] = useState(product?.product_type || '')
-  const [subcategory, setSubcategory] = useState(product?.subcategory || '')
-  const [featured,    setFeatured]    = useState(product?.featured ?? false)
+  const [category,         setCategory]         = useState(product?.category || '')
+  const [productType,      setProductType]      = useState(product?.product_type || '')
+  const [subcategory,      setSubcategory]      = useState(product?.subcategory || '')
+  const [featured,         setFeatured]         = useState(product?.featured ?? false)
+  const [engravingAvailable, setEngravingAvailable] = useState(product?.engraving_available ?? false)
+  const [engravingRequired,  setEngravingRequired]  = useState(product?.engraving_required  ?? false)
+  const [engravingMaxChars,  setEngravingMaxChars]  = useState(product?.engraving_max_chars  ?? 20)
 
   /* product_specs → attrs object で初期化（レガシー attributes へのフォールバック付き） */
   const [attrs, setAttrs] = useState(() => {
@@ -485,6 +488,63 @@ export function ProductForm({ product }) {
           </div>
         </div>
       )}
+
+      {/* ══ 刻印設定 ══ */}
+      <div className="form-section">
+        <div className="form-section-title">刻印オプション</div>
+        <div className="form-grid">
+          <div className="form-group form-col-2">
+            <label className="form-label" style={{ marginBottom: 10 }}>刻印対応</label>
+            <div className="toggle-wrap">
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  name="engraving_available"
+                  value="true"
+                  checked={!!engravingAvailable}
+                  onChange={e => setEngravingAvailable(e.target.checked)}
+                />
+                <span className="toggle-slider" />
+              </label>
+              <span className="toggle-label">この商品は刻印オプションに対応しています</span>
+            </div>
+          </div>
+
+          {engravingAvailable && (
+            <>
+              <div className="form-group form-col-2">
+                <label className="form-label" style={{ marginBottom: 10 }}>刻印必須</label>
+                <div className="toggle-wrap">
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      name="engraving_required"
+                      value="true"
+                      checked={!!engravingRequired}
+                      onChange={e => setEngravingRequired(e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                  <span className="toggle-label">注文時に刻印内容の入力を必須にする</span>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">最大文字数</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  name="engraving_max_chars"
+                  min="1"
+                  max="50"
+                  value={engravingMaxChars}
+                  onChange={e => setEngravingMaxChars(Math.min(50, Math.max(1, parseInt(e.target.value, 10) || 20)))}
+                />
+                <span className="form-hint">刻印に使用できる最大文字数（1〜50文字）</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ══ 説明文 ══ */}
       <div className="form-section">

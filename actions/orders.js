@@ -8,8 +8,9 @@ export async function getOrders(status = 'all') {
   let q = db.from('orders')
     .select(`
       id, status, total, tracking_number, created_at, updated_at,
-      customer_name, customer_email, shipping_address, notes,
-      order_items ( id, product_name, variant_label, unit_price, quantity, subtotal )
+      customer_name, customer_email, notes,
+      shipping_name, shipping_phone, shipping_address,
+      order_items ( id, product_name, variant_label, unit_price, quantity, subtotal, engraving_text )
     `)
     .order('created_at', { ascending: false })
   if (status !== 'all') q = q.eq('status', status)

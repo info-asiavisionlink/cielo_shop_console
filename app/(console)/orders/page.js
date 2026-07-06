@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getOrders, updateOrderStatus, updateTracking, updateOrderNotes } from '@/actions/orders'
 
 const STATUS_MAP = {
@@ -21,6 +21,112 @@ const STATUS_NEXT = {
   refunded:   [],
 }
 
+/* ── 配送先を日本式住所フォーマットに変換 ──
+   Stripe の address 構造:
+     { postal_code, state (都道府県), city, line1, line2, country }
+   日本式: 〒postal_code\n都道府県 city line1\nline2
+*/
+function formatShippingAddress(addr) {
+  if (!addr) return null
+  const parts = []
+  if (addr.postal_code) parts.push(`〒${addr.postal_code}`)
+  const prefecture = addr.state || addr.prefecture || ''
+  const city       = addr.city  || ''
+  const line1      = addr.line1 || ''
+  if (prefecture || city || line1) parts.push([prefecture, city, line1].filter(Boolean).join(''))
+  if (addr.line2) parts.push(addr.line2)
+  return parts.join('\n')
+}
+
+/* ── 配送先全情報（コピー用） ── */
+function buildCopyText(o) {
+  const lines = []
+  const addr  = o.shipping_address || {}
+
+  if (addr.postal_code) lines.push(`〒${addr.postal_code}`)
+  const prefecture = addr.state || addr.prefecture || ''
+  const city       = addr.city  || ''
+  const line1      = addr.line1 || ''
+  if (prefecture || city || line1) lines.push([prefecture, city, line1].filter(Boolean).join(''))
+  if (addr.line2) lines.push(addr.line2)
+  if (o.shipping_name) lines.push(o.shipping_name + ' 様')
+  if (o.shipping_phone) lines.push(o.shipping_phone)
+  return lines.join('\n')
+}
+
+/* ── コピーボタン ── */
+function CopyBtn({ text, label }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* unsupported env */ }
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      style={{
+        fontSize: 10, padding: '3px 8px',
+        border: '1px solid var(--border-h)',
+        background: 'none', color: 'var(--text-3)',
+        cursor: 'pointer', borderRadius: 'var(--r-sm)',
+        letterSpacing: '0.06em',
+        transition: 'color 0.2s, border-color 0.2s',
+      }}
+      title="クリップボードにコピー"
+    >
+      {copied ? '✓ コピー済み' : (label || '住所をコピー')}
+    </button>
+  )
+}
+
+/* ── 配送先表示ブロック ── */
+function ShippingBlock({ order }) {
+  const addr  = order.shipping_address
+  const name  = order.shipping_name
+  const phone = order.shipping_phone
+
+  if (!addr && !name && !phone) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--text-3)', fontStyle: 'italic' }}>
+        配送先情報なし
+      </div>
+    )
+  }
+
+  const postalCode  = addr?.postal_code || ''
+  const prefecture  = addr?.state || addr?.prefecture || ''
+  const city        = addr?.city  || ''
+  const line1       = addr?.line1 || ''
+  const line2       = addr?.line2 || ''
+  const copyText    = buildCopyText(order)
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Shipping Address
+        </span>
+        {copyText && <CopyBtn text={copyText} label="住所をコピー" />}
+      </div>
+      <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.8, color: 'var(--text-2)' }}>
+        {postalCode && <div>〒{postalCode}</div>}
+        {(prefecture || city || line1) && (
+          <div>{[prefecture, city, line1].filter(Boolean).join('')}</div>
+        )}
+        {line2 && <div>{line2}</div>}
+        {name && (
+          <div style={{ marginTop: 4, color: 'var(--text)' }}>{name} 様</div>
+        )}
+        {phone && <div style={{ color: 'var(--text-2)' }}>{phone}</div>}
+      </div>
+    </div>
+  )
+}
+
 export default function OrdersPage() {
   const [orders,   setOrders]   = useState([])
   const [filter,   setFilter]   = useState('all')
@@ -29,12 +135,12 @@ export default function OrdersPage() {
   const [expanded, setExpanded] = useState(new Set())
   const [notes,    setNotes]    = useState({})
 
-  async function load() {
+  const load = useCallback(async () => {
     try { setOrders(await getOrders(filter)) }
     catch (e) { setError(e.message) }
-  }
+  }, [filter])
 
-  useEffect(() => { load() }, [filter])
+  useEffect(() => { load() }, [load])
 
   function toggleExpand(id) {
     setExpanded(prev => {
@@ -111,7 +217,11 @@ export default function OrdersPage() {
                   const isOpen = expanded.has(o.id)
                   const items  = o.order_items ?? []
                   return [
-                    <tr key={o.id} style={{ cursor: items.length ? 'pointer' : 'default' }} onClick={() => items.length && toggleExpand(o.id)}>
+                    <tr
+                      key={o.id}
+                      style={{ cursor: items.length ? 'pointer' : 'default' }}
+                      onClick={() => items.length && toggleExpand(o.id)}
+                    >
                       <td style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-3)', userSelect: 'none' }}>
                         {items.length > 0 ? (isOpen ? '▼' : '▶') : ''}
                       </td>
@@ -156,58 +266,74 @@ export default function OrdersPage() {
                     </tr>,
 
                     isOpen && (
-                      <tr key={`${o.id}-detail`} style={{ background: 'var(--bg-2, #1a1a1a)' }}>
+                      <tr key={`${o.id}-detail`} style={{ background: 'rgba(240,244,255,0.02)' }}>
                         <td />
-                        <td colSpan={7} style={{ padding: '12px 16px' }}>
-                          {/* 注文明細 */}
-                          <div style={{ marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Order Items</div>
-                            <table style={{ width: '100%', fontSize: 12 }}>
-                              <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500, color: 'var(--text-3)' }}>商品</th>
-                                  <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500, color: 'var(--text-3)' }}>バリアント</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 500, color: 'var(--text-3)' }}>単価</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 500, color: 'var(--text-3)' }}>数量</th>
-                                  <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 500, color: 'var(--text-3)' }}>小計</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {items.map(item => (
-                                  <tr key={item.id}>
-                                    <td style={{ padding: '4px 8px' }}>{item.product_name}</td>
-                                    <td style={{ padding: '4px 8px', color: 'var(--text-3)' }}>{item.variant_label || '—'}</td>
-                                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>¥{(item.unit_price ?? 0).toLocaleString('ja-JP')}</td>
-                                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>{item.quantity}</td>
-                                    <td style={{ padding: '4px 8px', textAlign: 'right', color: 'var(--gold)' }}>¥{(item.subtotal ?? 0).toLocaleString('ja-JP')}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                        <td colSpan={7} style={{ padding: '16px 20px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
-                          {/* 配送先 */}
-                          {o.shipping_address && (
-                            <div style={{ marginBottom: 12 }}>
-                              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Shipping Address</div>
-                              <div className="td-mono" style={{ fontSize: 12 }}>
-                                {[o.shipping_address.postal_code, o.shipping_address.prefecture, o.shipping_address.city, o.shipping_address.line1, o.shipping_address.line2].filter(Boolean).join(' ')}
+                            {/* 注文明細 */}
+                            <div>
+                              <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 8, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                Order Items
                               </div>
+                              <table style={{ width: '100%', fontSize: 12 }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <th style={{ textAlign: 'left', padding: '4px 6px', fontWeight: 500, color: 'var(--text-3)', fontSize: 11 }}>商品</th>
+                                    <th style={{ textAlign: 'right', padding: '4px 6px', fontWeight: 500, color: 'var(--text-3)', fontSize: 11 }}>単価</th>
+                                    <th style={{ textAlign: 'right', padding: '4px 6px', fontWeight: 500, color: 'var(--text-3)', fontSize: 11 }}>数量</th>
+                                    <th style={{ textAlign: 'right', padding: '4px 6px', fontWeight: 500, color: 'var(--text-3)', fontSize: 11 }}>小計</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {items.map(item => (
+                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                      <td style={{ padding: '6px 6px' }}>
+                                        <div>{item.product_name}</div>
+                                        {item.variant_label && (
+                                          <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>
+                                            {item.variant_label}
+                                          </div>
+                                        )}
+                                        {item.engraving_text && (
+                                          <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 3 }}>
+                                            刻印: {item.engraving_text}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace' }}>
+                                        ¥{(item.unit_price ?? 0).toLocaleString('ja-JP')}
+                                      </td>
+                                      <td style={{ padding: '6px 6px', textAlign: 'right' }}>{item.quantity}</td>
+                                      <td style={{ padding: '6px 6px', textAlign: 'right', color: 'var(--gold)', fontFamily: 'monospace' }}>
+                                        ¥{(item.subtotal ?? 0).toLocaleString('ja-JP')}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                          )}
 
-                          {/* メモ */}
-                          <div>
-                            <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Notes</div>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <input
-                                className="form-input"
-                                style={{ flex: 1, fontSize: 12, padding: '5px 8px' }}
-                                placeholder="管理者メモ"
-                                defaultValue={o.notes || ''}
-                                onChange={e => setNotes(n => ({ ...n, [o.id]: e.target.value }))}
-                              />
-                              <button className="btn btn-ghost btn-sm" onClick={() => saveNotes(o.id)}>保存</button>
+                            {/* 右カラム: 配送先 + メモ */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                              {/* 配送先 */}
+                              <ShippingBlock order={o} />
+
+                              {/* メモ */}
+                              <div>
+                                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Notes</div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                  <input
+                                    className="form-input"
+                                    style={{ flex: 1, fontSize: 12, padding: '5px 8px' }}
+                                    placeholder="管理者メモ"
+                                    defaultValue={o.notes || ''}
+                                    onChange={e => setNotes(n => ({ ...n, [o.id]: e.target.value }))}
+                                  />
+                                  <button className="btn btn-ghost btn-sm" onClick={() => saveNotes(o.id)}>保存</button>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </td>
