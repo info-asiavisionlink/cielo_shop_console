@@ -161,6 +161,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })
   }
 
+  let _step = 'storage_download'
+  let _detail = ''
+
   // Download from Supabase Storage
   const admin = createAdminClient()
   const { data: fileBlob, error: downloadError } = await admin.storage
@@ -169,10 +172,16 @@ export async function POST(request) {
 
   if (downloadError || !fileBlob) {
     console.error('[CIELO AI] Storage download error:', downloadError?.message)
-    return NextResponse.json({ error: 'ファイルが見つかりません。再度アップロードしてください。' }, { status: 404 })
+    return NextResponse.json({ error: 'ファイルが見つかりません。再度アップロードしてください。', _step }, { status: 404 })
   }
 
   const buffer = Buffer.from(await fileBlob.arrayBuffer())
+  _detail = `bufferSize=${buffer.byteLength}`
+
+  if (buffer.byteLength === 0) {
+    console.error('[CIELO AI] Downloaded empty buffer for path:', path)
+    return NextResponse.json({ error: 'PDFのアップロードが完了していません。再度アップロードしてください。', _step: 'empty_buffer' }, { status: 422 })
+  }
 
   // Delete temp file (async, non-blocking)
   admin.storage.from('product-images').remove([path]).catch(e =>
@@ -180,6 +189,7 @@ export async function POST(request) {
   )
 
   // Step 1: Attempt text extraction
+  _step = 'pdf_parse'
   let pdfText = ''
   try {
     const pdfParse = (await import('pdf-parse')).default
@@ -187,10 +197,12 @@ export async function POST(request) {
     pdfText        = (data.text || '').replace(/\s+/g, ' ').trim()
   } catch (e) {
     console.warn('[CIELO AI] pdf-parse failed, falling back to vision:', e.message)
+    _detail += ` parse_err=${e.message.slice(0, 80)}`
   }
 
   const hasText = pdfText.length >= TEXT_THRESHOLD
-  console.log(`[CIELO AI] PDF path=${path} textLen=${pdfText.length} mode=${hasText ? 'text' : 'vision'}`)
+  _step = hasText ? 'openai_text' : 'openai_vision'
+  console.log(`[CIELO AI] path=${path} bufferSize=${buffer.byteLength} textLen=${pdfText.length} mode=${hasText ? 'text' : 'vision'}`)
 
   // Step 2: AI analysis
   let draft
@@ -202,16 +214,10 @@ export async function POST(request) {
       draft = await analyzeWithVision(openai, buffer)
     }
   } catch (e) {
-    console.error('[CIELO AI] OpenAI error:', e.message, 'status:', e.status)
-    if (!process.env.OPENAI_API_KEY && !process.env.OPNEAI_API_KEY) {
-      return NextResponse.json({ error: 'OPENAI_API_KEY が Vercel 環境変数に設定されていません。Vercel Dashboard → Settings → Environment Variables で追加してください。' }, { status: 502 })
-    }
-    if (e.message?.includes('not configured')) {
-      return NextResponse.json({ error: 'OpenAI API Key が設定されていません。Vercel Dashboard の Environment Variables を確認してください。' }, { status: 502 })
-    }
-    if (e.status === 401) return NextResponse.json({ error: 'OpenAI API Key が無効です。Vercel Dashboard の Environment Variables を確認してください。' }, { status: 502 })
-    if (e.status === 429) return NextResponse.json({ error: 'しばらくしてから再試行してください（OpenAI レート制限）。' }, { status: 429 })
-    return NextResponse.json({ error: '商品の解析に失敗しました。PDFを確認して、もう一度実行してください。' }, { status: 502 })
+    console.error(`[CIELO AI] step=${_step} status=${e.status} msg=${e.message}`)
+    if (e.status === 401) return NextResponse.json({ error: 'OpenAI API Key が無効です。', _step }, { status: 502 })
+    if (e.status === 429) return NextResponse.json({ error: 'しばらくしてから再試行してください（レート制限）。', _step }, { status: 429 })
+    return NextResponse.json({ error: `解析エラー [${_step}]: ${e.message?.slice(0, 120) || 'unknown'}`, _step }, { status: 502 })
   }
 
   return NextResponse.json({ draft: sanitize(draft), mode: hasText ? 'text' : 'vision' })

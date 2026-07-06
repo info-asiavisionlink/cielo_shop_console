@@ -71,7 +71,10 @@ export default function AiImportSection({ onDraftReady }) {
         body:    JSON.stringify({ path: urlData.path }),
       })
       const analyzeData = await analyzeRes.json()
-      if (!analyzeRes.ok || analyzeData.error) throw new Error(analyzeData.error || 'AI解析に失敗しました')
+      if (!analyzeRes.ok || analyzeData.error) {
+        const step = analyzeData._step ? ` [${analyzeData._step}]` : ''
+        throw new Error((analyzeData.error || 'AI解析に失敗しました') + step)
+      }
 
       setStatus('done')
       onDraftReady?.(analyzeData.draft)
