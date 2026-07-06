@@ -1,8 +1,7 @@
+import { createAdminClient } from '@/lib/supabase-admin'
 import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
-
-const MAX_PDF_BYTES = 10 * 1024 * 1024 // 10 MB
 
 function getOpenAI() {
   const key = process.env.OPENAI_API_KEY || process.env.OPNEAI_API_KEY
@@ -57,23 +56,32 @@ export async function POST(request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Parse form
-  let formData
-  try { formData = await request.formData() }
+  // Parse body — accepts { path: "pdf-temp/xxx.pdf" }
+  let body
+  try { body = await request.json() }
   catch { return NextResponse.json({ error: 'Invalid request body' }, { status: 400 }) }
 
-  const file = formData.get('file')
-  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-
-  // Validate type
-  const isPDF = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf')
-  if (!isPDF) return NextResponse.json({ error: 'PDF files only' }, { status: 400 })
-
-  // Validate size
-  const buffer = Buffer.from(await file.arrayBuffer())
-  if (buffer.byteLength > MAX_PDF_BYTES) {
-    return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
+  const { path } = body || {}
+  if (!path || typeof path !== 'string' || !path.startsWith('pdf-temp/')) {
+    return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })
   }
+
+  // Download from Supabase Storage (server-to-server, no size limit)
+  const admin = createAdminClient()
+  const { data: fileBlob, error: downloadError } = await admin.storage
+    .from('product-images')
+    .download(path)
+
+  if (downloadError || !fileBlob) {
+    return NextResponse.json({ error: 'ファイルが見つかりません。再度アップロードしてください。' }, { status: 404 })
+  }
+
+  const buffer = Buffer.from(await fileBlob.arrayBuffer())
+
+  // Delete temp file asynchronously (don't block response)
+  admin.storage.from('product-images').remove([path]).catch(e =>
+    console.error('[CIELO AI] temp file delete error:', e.message)
+  )
 
   // Extract text from PDF
   let pdfText = ''
@@ -83,11 +91,11 @@ export async function POST(request) {
     pdfText = (data.text || '').trim()
   } catch (e) {
     console.error('[CIELO AI] PDF parse error:', e.message)
-    return NextResponse.json({ error: 'Could not read PDF content. Try a different PDF.' }, { status: 422 })
+    return NextResponse.json({ error: 'PDFの読み取りに失敗しました。テキストが含まれるPDFを使用してください。' }, { status: 422 })
   }
 
   if (!pdfText || pdfText.length < 30) {
-    return NextResponse.json({ error: 'PDF appears to contain no readable text (image-only PDF).' }, { status: 422 })
+    return NextResponse.json({ error: 'PDFにテキストが含まれていません（画像のみのPDFは非対応）。' }, { status: 422 })
   }
 
   // Call OpenAI
@@ -110,40 +118,36 @@ export async function POST(request) {
     draft = JSON.parse(completion.choices[0]?.message?.content || '{}')
   } catch (e) {
     console.error('[CIELO AI] OpenAI error:', e.message)
-    if (e.status === 401) return NextResponse.json({ error: 'OpenAI API key invalid' }, { status: 502 })
-    if (e.status === 429) return NextResponse.json({ error: 'OpenAI rate limit exceeded. Try again later.' }, { status: 429 })
-    return NextResponse.json({ error: 'AI analysis failed. Please try again.' }, { status: 502 })
+    if (e.status === 401) return NextResponse.json({ error: 'OpenAI APIキーが無効です' }, { status: 502 })
+    if (e.status === 429) return NextResponse.json({ error: 'OpenAI レート制限中。しばらくしてから再試行してください。' }, { status: 429 })
+    return NextResponse.json({ error: 'AI解析に失敗しました。再度お試しください。' }, { status: 502 })
   }
 
-  // Sanitize — never trust AI output directly
+  // Sanitize AI response
   const slug = typeof draft.slug_suggestion === 'string'
     ? draft.slug_suggestion.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
     : null
 
   const sanitized = {
-    name:             typeof draft.name === 'string'             ? draft.name.slice(0, 200)             : null,
-    name_ja:          typeof draft.name_ja === 'string'          ? draft.name_ja.slice(0, 200)          : null,
-    slug_suggestion:  slug,
-    category:         ['jewelry', 'apparel', 'art'].includes(draft.category) ? draft.category          : null,
-    description:      typeof draft.description === 'string'      ? draft.description.slice(0, 1200)     : null,
-    description_ja:   typeof draft.description_ja === 'string'   ? draft.description_ja.slice(0, 1200)  : null,
-    story:            typeof draft.story === 'string'            ? draft.story.slice(0, 300)            : null,
-    story_ja:         typeof draft.story_ja === 'string'         ? draft.story_ja.slice(0, 300)         : null,
-    seo_title:        typeof draft.seo_title === 'string'        ? draft.seo_title.slice(0, 120)        : null,
-    seo_description:  typeof draft.seo_description === 'string'  ? draft.seo_description.slice(0, 300)  : null,
+    name:            typeof draft.name === 'string'            ? draft.name.slice(0, 200)            : null,
+    name_ja:         typeof draft.name_ja === 'string'         ? draft.name_ja.slice(0, 200)         : null,
+    slug_suggestion: slug,
+    category:        ['jewelry', 'apparel', 'art'].includes(draft.category) ? draft.category         : null,
+    description:     typeof draft.description === 'string'     ? draft.description.slice(0, 1200)    : null,
+    description_ja:  typeof draft.description_ja === 'string'  ? draft.description_ja.slice(0, 1200) : null,
+    story:           typeof draft.story === 'string'           ? draft.story.slice(0, 300)           : null,
+    story_ja:        typeof draft.story_ja === 'string'        ? draft.story_ja.slice(0, 300)        : null,
+    seo_title:       typeof draft.seo_title === 'string'       ? draft.seo_title.slice(0, 120)       : null,
+    seo_description: typeof draft.seo_description === 'string' ? draft.seo_description.slice(0, 300) : null,
     tags: Array.isArray(draft.tags)
       ? draft.tags.filter(t => typeof t === 'string' && t.trim()).slice(0, 12).map(t => t.slice(0, 60))
       : [],
     specs: Array.isArray(draft.specs)
-      ? draft.specs
-          .filter(s => s?.label && s?.value)
-          .slice(0, 30)
+      ? draft.specs.filter(s => s?.label && s?.value).slice(0, 30)
           .map(s => ({ label: String(s.label).slice(0, 100), value: String(s.value).slice(0, 300) }))
       : [],
     variant_suggestions: Array.isArray(draft.variant_suggestions)
-      ? draft.variant_suggestions
-          .filter(v => v?.type && Array.isArray(v?.options))
-          .slice(0, 5)
+      ? draft.variant_suggestions.filter(v => v?.type && Array.isArray(v?.options)).slice(0, 5)
       : [],
     review_required: Array.isArray(draft.review_required)
       ? draft.review_required.filter(f => typeof f === 'string').slice(0, 20)
