@@ -83,32 +83,31 @@ async function analyzeWithVision(openai, buffer) {
     purpose: 'user_data',
   })
 
+  const cleanup = () =>
+    openai.files.delete(uploaded.id).catch(e =>
+      console.error('[CIELO AI] OpenAI file cleanup error:', e.message)
+    )
+
+  let response
   try {
-    const response = await openai.responses.create({
+    response = await openai.responses.create({
       model: 'gpt-4o',
       input: [{
         role:    'user',
         content: [
-          {
-            type: 'input_text',
-            text: `${SYSTEM_PROMPT}\n\n${USER_PROMPT}`,
-          },
-          {
-            type:    'input_file',
-            file_id: uploaded.id,
-          },
+          { type: 'input_text', text: `${SYSTEM_PROMPT}\n\n${USER_PROMPT}` },
+          { type: 'input_file', file_id: uploaded.id },
         ],
       }],
       text: { format: { type: 'json_object' } },
     })
-
-    return JSON.parse(response.output_text || '{}')
-  } finally {
-    // Always clean up the uploaded file
-    openai.files.del(uploaded.id).catch(e =>
-      console.error('[CIELO AI] OpenAI file cleanup error:', e.message)
-    )
+  } catch (err) {
+    cleanup()   // clean up on failure, then rethrow
+    throw err
   }
+
+  cleanup()   // clean up on success (non-blocking)
+  return JSON.parse(response.output_text || '{}')
 }
 
 /* ── Sanitize AI response ────────────────────────────────── */
