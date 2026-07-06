@@ -3,9 +3,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { getOrders, updateOrderStatus, updateTracking, updateOrderNotes } from '@/actions/orders'
 
 const ENG_TYPE_LABELS = {
-  personal_mark: 'Personal Mark',
-  date:          'Date Mark',
-  short_message: 'Short Message',
+  personal_mark: 'イニシャル・お名前',
+  date:          '日付刻印',
+  short_message: 'メッセージ',
 }
 
 const STATUS_MAP = {
@@ -313,7 +313,7 @@ export default function OrdersPage() {
                                         )}
                                         {!item.engraving_type && (
                                           <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontStyle: 'italic' }}>
-                                            No Inscription
+                                            刻印なし
                                           </div>
                                         )}
                                       </td>

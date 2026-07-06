@@ -137,7 +137,7 @@ export default function ShippingPage() {
                             )}
                             {item.engraving_type && (
                               <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2 }}>
-                                {item.engraving_type === 'personal_mark' ? 'Mark' : item.engraving_type === 'date' ? 'Date' : 'Message'}: {item.engraving_text || '—'}
+                                {item.engraving_type === 'personal_mark' ? 'お名前' : item.engraving_type === 'date' ? '日付' : 'メッセージ'}: {item.engraving_text || '—'}
                               </div>
                             )}
                           </div>
