@@ -51,10 +51,34 @@ export default function NewProductPage() {
   )
 }
 
-/* ─── Category → slug & type mapping ─── */
+/* ─── Product type → subcategory slug ─── */
 const TYPE_TO_SUBCAT = {
-  Necklace: 'necklace', Ring: 'ring', Bracelet: 'bracelet',
-  Pierce: 'pierce', Pendant: 'pendant', Tshirt: 'tshirt', Hoodie: 'hoodie',
+  // Accessories
+  Necklace: 'necklace', Bracelet: 'bracelet', Earring: 'earring',
+  Ring: 'ring', Pendant: 'pendant', Anklet: 'anklet', Chain: 'chain',
+  Brooch: 'brooch', Bangle: 'bangle', Pierce: 'earring',
+  // Apparel
+  'T-Shirt': 'tshirt', 'Long T-Shirt': 'longtshirt', Hoodie: 'hoodie',
+  Sweatshirt: 'sweatshirt', Pants: 'pants', Shorts: 'shorts',
+  Jacket: 'jacket', Setup: 'setup', Cap: 'cap', Socks: 'socks',
+  // Art
+  Print: 'print', Photography: 'photography', Canvas: 'canvas',
+  'Mixed Media': 'mixed-media', Sculpture: 'sculpture',
+}
+
+/* ─── Base product types per category ─── */
+const BASE_PRODUCT_TYPES = {
+  jewelry: [
+    'Necklace', 'Bracelet', 'Earring', 'Ring', 'Pendant',
+    'Anklet', 'Chain', 'Brooch', 'Bangle', 'Charm', 'Other',
+  ],
+  apparel: [
+    'T-Shirt', 'Long T-Shirt', 'Hoodie', 'Sweatshirt',
+    'Pants', 'Shorts', 'Jacket', 'Setup', 'Cap', 'Socks', 'Other',
+  ],
+  art: [
+    'Print', 'Photography', 'Canvas', 'Mixed Media', 'Sculpture', 'Other',
+  ],
 }
 
 /* ─── Spec templates per category ─── */
@@ -115,9 +139,18 @@ export function ProductForm({ product }) {
   })
 
   /* ── AI Draft ── */
-  const [aiDraftFields, setAiDraftFields] = useState(new Set()) // which fields were AI-filled
+  const [aiDraftFields, setAiDraftFields] = useState(new Set())
   const [variantSuggestions, setVariantSuggestions] = useState([])
   const [reviewRequired,     setReviewRequired]     = useState([])
+
+  /* ── Extra product types added by AI ── */
+  const [extraTypes, setExtraTypes] = useState({})
+
+  function getTypes(cat) {
+    const base  = BASE_PRODUCT_TYPES[cat] || []
+    const extra = extraTypes[cat] || []
+    return [...base, ...extra.filter(t => !base.includes(t))]
+  }
 
   /* ── Images (max 5) ── */
   const initImages = () => {
@@ -239,8 +272,25 @@ export function ProductForm({ product }) {
     if (draft.seo_title   && seoTitleRef.current) { seoTitleRef.current.value  = draft.seo_title;    filled.add('seo_title') }
     if (draft.seo_description && seoDescRef.current) { seoDescRef.current.value = draft.seo_description; filled.add('seo_description') }
 
-    if (draft.category && ['jewelry', 'apparel', 'art'].includes(draft.category)) {
-      setCategory(draft.category); filled.add('category')
+    const resolvedCat = draft.category === 'accessories' ? 'jewelry' : draft.category
+    if (resolvedCat && ['jewelry', 'apparel', 'art'].includes(resolvedCat)) {
+      setCategory(resolvedCat); filled.add('category')
+    }
+
+    // product_type: auto-add if not in base list
+    if (draft.product_type && typeof draft.product_type === 'string') {
+      const cat   = resolvedCat || category
+      const types = getTypes(cat)
+      if (!types.includes(draft.product_type)) {
+        setExtraTypes(prev => ({
+          ...prev,
+          [cat]: [...(prev[cat] || []), draft.product_type],
+        }))
+      }
+      setProductType(draft.product_type)
+      const sub = TYPE_TO_SUBCAT[draft.product_type]
+      if (sub) setSubcategory(sub)
+      filled.add('product_type')
     }
     if (Array.isArray(draft.specs) && draft.specs.length) {
       setSpecs(draft.specs.map(s => ({ spec_key: s.label, spec_value: s.value }))); filled.add('specs')
@@ -312,7 +362,7 @@ export function ProductForm({ product }) {
               onChange={e => { setCategory(e.target.value); setProductType(''); setSubcategory('') }}
             >
               <option value="" disabled>選択してください</option>
-              <option value="jewelry">Jewelry（ジュエリー）</option>
+              <option value="jewelry">Accessories（アクセサリー）</option>
               <option value="apparel">Apparel（アパレル）</option>
               <option value="art">Art（アート）</option>
             </select>
@@ -375,40 +425,37 @@ export function ProductForm({ product }) {
         </div>
       </div>
 
-      {/* ══ Jewelry Type ══ */}
-      {category === 'jewelry' && (
+      {/* ══ Product Type（Accessories / Apparel / Art） ══ */}
+      {(category === 'jewelry' || category === 'apparel' || category === 'art') && (
         <div className="form-section">
-          <div className="form-section-title">Jewelry Type</div>
-          <div className="form-grid">
-            <div className="form-group form-col-2">
-              <label className="form-label">Jewelry Type *</label>
-              <select className="form-select" value={productType} onChange={e => setProductType(e.target.value)}>
-                <option value="" disabled>選択してください</option>
-                <option value="Necklace">Necklace</option>
-                <option value="Ring">Ring</option>
-                <option value="Bracelet">Bracelet</option>
-                <option value="Pierce">Pierce</option>
-                <option value="Pendant">Pendant</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {category === 'jewelry' ? 'Accessories Type' : category === 'apparel' ? 'Apparel Type' : 'Art Type'}
+            {aiDraftFields.has('product_type') && (
+              <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI</span>
+            )}
           </div>
-        </div>
-      )}
-
-      {/* ══ Apparel Type ══ */}
-      {category === 'apparel' && (
-        <div className="form-section">
-          <div className="form-section-title">Apparel Type</div>
           <div className="form-grid">
             <div className="form-group form-col-2">
-              <label className="form-label">Apparel Type *</label>
-              <select className="form-select" value={productType} onChange={e => setProductType(e.target.value)}>
-                <option value="" disabled>選択してください</option>
-                <option value="Tshirt">T-Shirt</option>
-                <option value="Hoodie">Hoodie</option>
-                <option value="Other">Other</option>
+              <label className="form-label">種別</label>
+              <select
+                className="form-select"
+                value={productType}
+                onChange={e => {
+                  setProductType(e.target.value)
+                  const sub = TYPE_TO_SUBCAT[e.target.value]
+                  if (sub) setSubcategory(sub)
+                }}
+              >
+                <option value="">選択してください</option>
+                {getTypes(category).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
               </select>
+              {(extraTypes[category] || []).length > 0 && (
+                <span className="form-hint">
+                  ✦ AIが追加したタイプ: {(extraTypes[category] || []).join(', ')}
+                </span>
+              )}
             </div>
           </div>
         </div>

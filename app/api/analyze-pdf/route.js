@@ -44,7 +44,8 @@ const USER_PROMPT = `Analyze this product and return a JSON object with these ex
   "name": "English product name (clean, luxury brand tone, no marketplace keywords)",
   "name_ja": "Japanese product name or null",
   "slug_suggestion": "url-safe lowercase slug, e.g. cielo-tennis-bracelet",
-  "category": "jewelry" or "apparel" or "art" or null,
+  "category": "jewelry" (for all accessories: necklaces, bracelets, earrings, rings, etc.) or "apparel" or "art" or null,
+  "product_type": specific type e.g. "Necklace", "Bracelet", "Earring", "Ring", "Pendant", "Anklet", "T-Shirt", "Long T-Shirt", "Hoodie", "Setup", "Jacket" — or a new type if none fit,
   "description": "2-4 sentences in CIELO brand voice (English)",
   "description_ja": "Japanese version or null",
   "story": "1 short brand tagline in English or null",
@@ -120,7 +121,10 @@ function sanitize(draft) {
     name:            typeof draft.name === 'string'            ? draft.name.slice(0, 200)            : null,
     name_ja:         typeof draft.name_ja === 'string'         ? draft.name_ja.slice(0, 200)         : null,
     slug_suggestion: slug,
-    category:        ['jewelry', 'apparel', 'art'].includes(draft.category) ? draft.category         : null,
+    category:        ['jewelry', 'accessories', 'apparel', 'art'].includes(draft.category)
+                       ? (draft.category === 'accessories' ? 'jewelry' : draft.category)
+                       : null,
+    product_type:    typeof draft.product_type === 'string' ? draft.product_type.slice(0, 60) : null,
     description:     typeof draft.description === 'string'     ? draft.description.slice(0, 1200)    : null,
     description_ja:  typeof draft.description_ja === 'string'  ? draft.description_ja.slice(0, 1200) : null,
     story:           typeof draft.story === 'string'           ? draft.story.slice(0, 300)           : null,
