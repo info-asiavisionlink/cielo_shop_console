@@ -182,7 +182,7 @@ async function _saveVariants(db, productId, variantsJson) {
     type:           v.type || 'size',
     label:          v.label.trim(),
     label_ja:       v.label_ja?.trim() || null,
-    stock_count:    parseInt(v.stock_count) || 0,
+    stock_count:    9999,  // OEM在庫レス運用のため常に9999
     price_modifier: parseInt(v.price_modifier) || 0,
     sort_order:     i,
   })))

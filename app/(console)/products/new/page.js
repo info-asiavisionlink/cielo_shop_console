@@ -143,6 +143,11 @@ export function ProductForm({ product }) {
   const [variantSuggestions, setVariantSuggestions] = useState([])
   const [reviewRequired,     setReviewRequired]     = useState([])
 
+  /* ── Color (1 color per product) ── */
+  const [productColor, setProductColor] = useState(
+    product?.product_specs?.find(s => ['Color', 'カラー', 'colour'].includes(s.spec_key))?.spec_value || ''
+  )
+
   /* ── Extra product types added by AI ── */
   const [extraTypes, setExtraTypes] = useState({})
 
@@ -216,7 +221,7 @@ export function ProductForm({ product }) {
   function removeTag(name) { setSelectedTags(prev => prev.filter(t => t.name !== name)) }
 
   function addVariant() {
-    setVariants(v => [...v, { sku: '', type: defaultVariantType(), label: '', label_ja: '', stock_count: 0, price_modifier: 0 }])
+    setVariants(v => [...v, { sku: '', type: defaultVariantType(), label: '', label_ja: '', stock_count: 9999, price_modifier: 0 }])
   }
   function updateVariant(i, field, value) {
     setVariants(v => v.map((item, idx) => idx === i ? { ...item, [field]: value } : item))
@@ -329,7 +334,11 @@ export function ProductForm({ product }) {
   return (
     <>
       {/* ─ JSON hidden inputs ─ */}
-      <input type="hidden" name="specs_json"    value={JSON.stringify(specs)} />
+      <input type="hidden" name="specs_json" value={JSON.stringify(
+        productColor.trim()
+          ? [{ spec_key: 'カラー', spec_value: productColor.trim() }, ...specs.filter(s => !['Color','カラー','colour'].includes(s.spec_key))]
+          : specs.filter(s => !['Color','カラー','colour'].includes(s.spec_key))
+      )} />
       <input type="hidden" name="variants_json" value={JSON.stringify(variants)} />
       <input type="hidden" name="images_json"   value={JSON.stringify(images)} />
       <input type="hidden" name="tags_json"     value={JSON.stringify(selectedTags)} />
@@ -368,9 +377,19 @@ export function ProductForm({ product }) {
             </select>
           </div>
           <div className="form-group">
+            <FieldLabel name="product_color">カラー</FieldLabel>
+            <input
+              className="form-input"
+              placeholder="BLACK / SILVER / GOLD / WHITE ..."
+              value={productColor}
+              onChange={e => setProductColor(e.target.value)}
+            />
+            <span className="form-hint">1商品1カラー。SHOPの仕様欄に表示されます。</span>
+          </div>
+          <div className="form-group">
             <label className="form-label">サブカテゴリ</label>
             <input className="form-input" value={subcategory} onChange={e => setSubcategory(e.target.value)} placeholder="necklace / ring / tshirt ..." />
-            <span className="form-hint">Jewelry/Apparel は Jewelry Type 選択で自動入力</span>
+            <span className="form-hint">Jewelry/Apparel は種別選択で自動入力</span>
           </div>
           <div className="form-group">
             <label className="form-label">ステータス</label>
@@ -399,18 +418,15 @@ export function ProductForm({ product }) {
         </div>
       </div>
 
-      {/* ══ 価格・在庫 ══ */}
+      {/* ══ 価格 ══ */}
       <div className="form-section">
-        <div className="form-section-title">価格・在庫</div>
+        <div className="form-section-title">価格</div>
+        {/* stock_count は常に 9999（OEM在庫レス運用） */}
+        <input type="hidden" name="stock_count" value="9999" />
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">価格（税込・JPY）*</label>
             <input className="form-input" name="price" type="number" min="0" defaultValue={product?.price ?? 0} required />
-          </div>
-          <div className="form-group">
-            <label className="form-label">在庫数</label>
-            <input className="form-input" name="stock_count" type="number" min="0" defaultValue={product?.stock_count ?? 0} />
-            <span className="form-hint">バリアントを使う場合はバリアント側で管理</span>
           </div>
           <div className="form-group form-col-2">
             <label className="form-label" style={{ marginBottom: 10 }}>注目商品（Featured）</label>
@@ -682,26 +698,24 @@ export function ProductForm({ product }) {
           <button type="button" className="btn btn-ghost btn-sm" onClick={addVariant}>+ バリアント追加</button>
         </div>
         {variants.length === 0 ? (
-          <div style={{ color: 'var(--text-3)', fontSize: 13 }}>バリアントなし（在庫数は上の「在庫数」フィールドを使用）</div>
+          <div style={{ color: 'var(--text-3)', fontSize: 13 }}>バリアントなし（サイズ・長さ等がある場合は追加）</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.2fr 70px 90px 90px 36px', gap: 6, fontSize: 11, color: 'var(--text-3)', padding: '0 2px' }}>
-              <span>ラベル（英）</span><span>ラベル（日）</span><span>タイプ</span><span>在庫</span><span>追加料金</span><span>SKU</span><span />
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.2fr 90px 90px 36px', gap: 6, fontSize: 11, color: 'var(--text-3)', padding: '0 2px' }}>
+              <span>ラベル（英）</span><span>ラベル（日）</span><span>タイプ</span><span>追加料金</span><span>SKU</span><span />
             </div>
             {variants.map((v, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.2fr 70px 90px 90px 36px', gap: 6, alignItems: 'center' }}>
-                <input className="form-input" placeholder="40cm / Black M" value={v.label} onChange={e => updateVariant(i,'label',e.target.value)} style={{ fontSize: 12 }} />
-                <input className="form-input" placeholder="40センチ" value={v.label_ja} onChange={e => updateVariant(i,'label_ja',e.target.value)} style={{ fontSize: 12 }} />
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.2fr 90px 90px 36px', gap: 6, alignItems: 'center' }}>
+                <input className="form-input" placeholder="S / M / L / 40cm" value={v.label} onChange={e => updateVariant(i,'label',e.target.value)} style={{ fontSize: 12 }} />
+                <input className="form-input" placeholder="小 / 中 / 大" value={v.label_ja} onChange={e => updateVariant(i,'label_ja',e.target.value)} style={{ fontSize: 12 }} />
                 <select className="form-select" value={v.type} onChange={e => updateVariant(i,'type',e.target.value)} style={{ fontSize: 12 }}>
-                  <option value="ring_size">Ring Size</option>
-                  <option value="chain_length">Chain Length</option>
-                  <option value="size">Size</option>
-                  <option value="color_size">Color / Size</option>
-                  <option value="frame">Frame</option>
-                  <option value="length">Length</option>
+                  <option value="size">Size（サイズ）</option>
+                  <option value="ring_size">Ring Size（号数）</option>
+                  <option value="chain_length">Chain Length（長さ）</option>
+                  <option value="length">Length（旧形式）</option>
+                  <option value="frame">Frame（額装）</option>
                 </select>
-                <input className="form-input" type="number" min="0" value={v.stock_count} onChange={e => updateVariant(i,'stock_count',e.target.value)} style={{ fontSize: 12 }} />
-                <input className="form-input" type="number" value={v.price_modifier} onChange={e => updateVariant(i,'price_modifier',e.target.value)} style={{ fontSize: 12 }} />
+                <input className="form-input" type="number" value={v.price_modifier} onChange={e => updateVariant(i,'price_modifier',e.target.value)} style={{ fontSize: 12 }} placeholder="0" />
                 <input className="form-input" placeholder="省略可" value={v.sku} onChange={e => updateVariant(i,'sku',e.target.value)} style={{ fontSize: 12 }} />
                 <button type="button" onClick={() => removeVariant(i)}
                   style={{ background: 'none', border: 'none', color: 'var(--danger,#e53e3e)', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 0 }}>×</button>
