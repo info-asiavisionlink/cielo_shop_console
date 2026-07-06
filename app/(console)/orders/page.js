@@ -2,6 +2,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getOrders, updateOrderStatus, updateTracking, updateOrderNotes } from '@/actions/orders'
 
+const ENG_TYPE_LABELS = {
+  personal_mark: 'Personal Mark',
+  date:          'Date Mark',
+  short_message: 'Short Message',
+}
+
 const STATUS_MAP = {
   pending:    '未確認',
   paid:       '支払い済',
@@ -295,9 +301,19 @@ export default function OrdersPage() {
                                             {item.variant_label}
                                           </div>
                                         )}
-                                        {item.engraving_text && (
-                                          <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 3 }}>
-                                            刻印: {item.engraving_text}
+                                        {item.engraving_type && (
+                                          <div style={{ marginTop: 4, padding: '4px 0', borderTop: '1px solid var(--border)' }}>
+                                            <div style={{ fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.08em' }}>
+                                              {ENG_TYPE_LABELS[item.engraving_type] || item.engraving_type}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: '0.06em' }}>
+                                              {item.engraving_text || '—'}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {!item.engraving_type && (
+                                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontStyle: 'italic' }}>
+                                            No Inscription
                                           </div>
                                         )}
                                       </td>

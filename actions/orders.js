@@ -10,7 +10,7 @@ export async function getOrders(status = 'all') {
       id, status, total, tracking_number, created_at, updated_at,
       customer_name, customer_email, notes,
       shipping_name, shipping_phone, shipping_address,
-      order_items ( id, product_name, variant_label, unit_price, quantity, subtotal, engraving_text )
+      order_items ( id, product_name, variant_label, unit_price, quantity, subtotal, engraving_type, engraving_text )
     `)
     .order('created_at', { ascending: false })
   if (status !== 'all') q = q.eq('status', status)

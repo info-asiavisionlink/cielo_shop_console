@@ -135,9 +135,9 @@ export default function ShippingPage() {
                             {item.variant_label && (
                               <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{item.variant_label}</div>
                             )}
-                            {item.engraving_text && (
+                            {item.engraving_type && (
                               <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 2 }}>
-                                刻印: {item.engraving_text}
+                                {item.engraving_type === 'personal_mark' ? 'Mark' : item.engraving_type === 'date' ? 'Date' : 'Message'}: {item.engraving_text || '—'}
                               </div>
                             )}
                           </div>
