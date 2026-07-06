@@ -12,12 +12,6 @@ const NAV = [
     ],
   },
   {
-    section: 'Experience',
-    items: [
-      { href: '/experience/hero', label: 'Hero Slides', icon: <HeroIcon /> },
-    ],
-  },
-  {
     section: 'Catalog',
     items: [
       { href: '/products', label: 'Products', icon: <BoxIcon /> },
@@ -127,7 +121,6 @@ export default function ConsoleLayout({ children }) {
 
 /* ── Icons ── */
 function GridIcon()   { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg> }
-function HeroIcon()   { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="3" width="14" height="10" rx="1"/><path d="M1 6h14"/><circle cx="5" cy="4.5" r="0.7" fill="currentColor" stroke="none"/><path d="M6 9.5l2-2 2 2 2-2"/></svg> }
 function BoxIcon()    { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 5l6-3 6 3v6l-6 3-6-3V5z"/><path d="M8 2v12M2 5l6 3 6-3"/></svg> }
 function BagIcon()    { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 6V4a3 3 0 116 0v2"/><rect x="1" y="6" width="14" height="9" rx="1"/></svg> }
 function TruckIcon()  { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 3h9v7H1z"/><path d="M10 5h3l2 3v2h-5V5z"/><circle cx="4" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg> }
