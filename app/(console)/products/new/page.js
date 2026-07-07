@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createProduct, getTags } from '@/actions/products'
 import AiImportSection from '../_ai-import'
+import AiImageGen from '../_ai-image-gen'
 
 export default function NewProductPage() {
   const router  = useRouter()
@@ -416,6 +417,21 @@ export function ProductForm({ product }) {
             />
           ))}
         </div>
+
+        {/* AI Image Generation */}
+        <AiImageGen
+          productName={nameRef.current?.value || product?.name || ''}
+          productType={productType}
+          category={category}
+          color={productColor}
+          onImagesReady={urls => {
+            setImages(prev => {
+              const next = [...prev]
+              urls.forEach((url, i) => { if (i < next.length) next[i] = { url, alt: '' } })
+              return next
+            })
+          }}
+        />
       </div>
 
       {/* ══ 価格 ══ */}
