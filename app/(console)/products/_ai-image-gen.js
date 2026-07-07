@@ -2,11 +2,11 @@
 import { useState, useRef } from 'react'
 
 const SHOT_LABELS = {
-  worn_full:      'Lifestyle — Full Body',
-  worn_closeup:   'Close-up — Worn',
-  worn_urban:     'Lifestyle — Urban',
-  detail_surface: 'Detail — Material',
-  worn_seated:    'Lifestyle — Seated',
+  worn_full_male:      'Male — Full Body',
+  worn_full_female:    'Female — Full Body',
+  worn_closeup_female: 'Female — Close-up',
+  worn_urban_male:     'Male — Urban',
+  detail_surface:      'Detail — Material',
 }
 
 async function uploadRefToCloudinary(file) {

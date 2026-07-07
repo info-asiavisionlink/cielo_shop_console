@@ -15,29 +15,29 @@ function getOpenAI() {
 /* ── 5 shot styles ── */
 const SHOTS = [
   {
-    id: 'worn_full',
+    id: 'worn_full_male',
     prompt: (name, type, color) =>
-      `Editorial fashion photo. A stylish Japanese model wearing this exact ${color} ${type}. Full upper body shot. Cinematic dark studio lighting. Luxury brand lookbook style. Do not alter the product design.`,
+      `Editorial fashion photo. A stylish Japanese male model wearing this exact ${color} ${type}. Full upper body shot. Cinematic dark studio lighting. Luxury brand lookbook style. Do not alter the product design.`,
   },
   {
-    id: 'worn_closeup',
+    id: 'worn_full_female',
     prompt: (name, type, color) =>
-      `Close-up editorial photo. This exact ${color} ${type} worn on a model. Extreme shallow depth of field, dramatic side lighting, dark background. Luxury jewelry editorial. Keep the product exactly as shown.`,
+      `Editorial fashion photo. A stylish Japanese female model wearing this exact ${color} ${type}. Full upper body shot. Cinematic dark studio lighting. Luxury brand lookbook style. Do not alter the product design.`,
   },
   {
-    id: 'worn_urban',
+    id: 'worn_closeup_female',
     prompt: (name, type, color) =>
-      `Street luxury editorial. Model wearing this exact ${color} ${type}, Tokyo night scene, soft neon ambient light. Atmospheric, cinematic mood. The product must look identical to the reference.`,
+      `Close-up editorial photo. This exact ${color} ${type} worn on a female model. Extreme shallow depth of field, dramatic side lighting, dark background. Luxury fashion editorial. Keep the product exactly as shown.`,
+  },
+  {
+    id: 'worn_urban_male',
+    prompt: (name, type, color) =>
+      `Street luxury editorial. A male model wearing this exact ${color} ${type}, Tokyo night scene, soft neon ambient light. Atmospheric, cinematic mood. The product must look identical to the reference.`,
   },
   {
     id: 'detail_surface',
     prompt: (name, type, color) =>
       `Macro detail photo of this exact ${color} ${type} on a dark matte surface. Dramatic raking light showing material texture and finish. No human. Product must look identical to reference image.`,
-  },
-  {
-    id: 'worn_seated',
-    prompt: (name, type, color) =>
-      `Luxury brand editorial. Seated model wearing this exact ${color} ${type}, minimalist dark studio. Hands visible. Shot for high-fashion lookbook. Product must appear exactly as in reference.`,
   },
 ]
 
