@@ -424,10 +424,22 @@ export function ProductForm({ product }) {
           productType={productType}
           category={category}
           color={productColor}
-          onImagesReady={urls => {
+          onGalleryReady={urls => {
+            // ギャラリー画像 → slots 2-5
             setImages(prev => {
               const next = [...prev]
-              urls.forEach((url, i) => { if (i < next.length) next[i] = { url, alt: '' } })
+              urls.forEach((url, i) => {
+                const slot = i + 1  // slot 1〜4（0-indexed: 1, 2, 3, 4）
+                if (slot < next.length) next[slot] = { url, alt: '' }
+              })
+              return next
+            })
+          }}
+          onThumbnailSelected={url => {
+            // 選択されたサムネイル → slot 0（画像1）
+            setImages(prev => {
+              const next = [...prev]
+              next[0] = { url, alt: '' }
               return next
             })
           }}

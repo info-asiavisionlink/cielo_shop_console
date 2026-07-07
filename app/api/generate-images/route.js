@@ -12,32 +12,56 @@ function getOpenAI() {
   return new OpenAI({ apiKey: key })
 }
 
-/* ── 5 shot styles ── */
-const SHOTS = [
+/* ── Gallery shots (4 images → slots 2-5) ── */
+const GALLERY_SHOTS = [
   {
-    id: 'worn_full_male',
+    id: 'gallery_male_full',
     prompt: (name, type, color) =>
-      `Editorial fashion photo. A stylish Japanese male model wearing this exact ${color} ${type}. Full upper body shot. Cinematic dark studio lighting. Luxury brand lookbook style. Do not alter the product design.`,
+      `Editorial fashion photo. A stylish Japanese male model wearing this exact ${color} ${type}. Full upper body. Cinematic dark studio lighting. Luxury brand lookbook. Do not alter the product.`,
   },
   {
-    id: 'worn_full_female',
+    id: 'gallery_female_full',
     prompt: (name, type, color) =>
-      `Editorial fashion photo. A stylish Japanese female model wearing this exact ${color} ${type}. Full upper body shot. Cinematic dark studio lighting. Luxury brand lookbook style. Do not alter the product design.`,
+      `Editorial fashion photo. A stylish Japanese female model wearing this exact ${color} ${type}. Full upper body. Cinematic dark studio lighting. Luxury brand lookbook. Do not alter the product.`,
   },
   {
-    id: 'worn_closeup_female',
+    id: 'gallery_female_closeup',
     prompt: (name, type, color) =>
-      `Close-up editorial photo. This exact ${color} ${type} worn on a female model. Extreme shallow depth of field, dramatic side lighting, dark background. Luxury fashion editorial. Keep the product exactly as shown.`,
+      `Close-up editorial. This exact ${color} ${type} worn on a female model. Shallow depth of field, dramatic side lighting, dark background. Luxury fashion editorial. Product unchanged.`,
   },
   {
-    id: 'worn_urban_male',
+    id: 'gallery_urban_male',
     prompt: (name, type, color) =>
-      `Street luxury editorial. A male model wearing this exact ${color} ${type}, Tokyo night scene, soft neon ambient light. Atmospheric, cinematic mood. The product must look identical to the reference.`,
+      `Street luxury editorial. A male model wearing this exact ${color} ${type}, Tokyo night scene, neon ambient light. Cinematic, atmospheric. Product unchanged.`,
+  },
+]
+
+/* ── Thumbnail candidates (5 images → user picks 1 → slot 1) ── */
+const THUMBNAIL_SHOTS = [
+  {
+    id: 'thumb_studio_male',
+    prompt: (name, type, color) =>
+      `Product thumbnail photo. Japanese male model wearing this exact ${color} ${type}, centered composition, clean dark studio background. Sharp, clear, works at small size. Luxury brand card image.`,
   },
   {
-    id: 'detail_surface',
+    id: 'thumb_studio_female',
     prompt: (name, type, color) =>
-      `Macro detail photo of this exact ${color} ${type} on a dark matte surface. Dramatic raking light showing material texture and finish. No human. Product must look identical to reference image.`,
+      `Product thumbnail photo. Japanese female model wearing this exact ${color} ${type}, centered composition, clean dark studio background. Sharp, clear, works at small size. Luxury brand card image.`,
+  },
+  {
+    id: 'thumb_closeup_product',
+    prompt: (name, type, color) =>
+      `Product thumbnail. This exact ${color} ${type} shown clearly against pure dark background. High contrast, sharp detail, no motion blur. Perfect for product grid thumbnail. No human.`,
+  },
+  {
+    id: 'thumb_editorial_female',
+    prompt: (name, type, color) =>
+      `Editorial thumbnail. Japanese female model, this exact ${color} ${type} clearly visible, moody cinematic portrait. Clean enough to read at thumbnail size. Luxury fashion.`,
+  },
+  {
+    id: 'thumb_editorial_male',
+    prompt: (name, type, color) =>
+      `Editorial thumbnail. Japanese male model, this exact ${color} ${type} clearly visible, street luxury portrait style. Clean enough to read at thumbnail size. Tokyo aesthetic.`,
   },
 ]
 
@@ -92,9 +116,14 @@ export async function POST(request) {
     return NextResponse.json({ error: e.message }, { status: 422 })
   }
 
-  // Generate 5 shots in parallel using images.edit (image-to-image)
+  // Generate gallery (4) + thumbnails (5) in parallel — 9 total
+  const allShots = [
+    ...GALLERY_SHOTS.map(s => ({ ...s, role: 'gallery' })),
+    ...THUMBNAIL_SHOTS.map(s => ({ ...s, role: 'thumbnail' })),
+  ]
+
   const results = await Promise.allSettled(
-    SHOTS.map(async (shot) => {
+    allShots.map(async (shot) => {
       const prompt = buildPrompt(shot, productName, productType, category, color)
       const response = await openai.images.edit({
         model:  MODEL,
@@ -105,23 +134,27 @@ export async function POST(request) {
       })
       const b64 = response.data?.[0]?.b64_json
       if (!b64) throw new Error('No image data returned')
-      return { id: shot.id, b64 }
+      return { id: shot.id, role: shot.role, b64 }
     })
   )
 
-  const images = []
-  const errors = []
+  const gallery    = []
+  const thumbnails = []
+  const errors     = []
+
   for (const r of results) {
-    if (r.status === 'fulfilled') images.push(r.value)
-    else {
+    if (r.status === 'fulfilled') {
+      if (r.value.role === 'gallery') gallery.push(r.value)
+      else thumbnails.push(r.value)
+    } else {
       console.error('[CIELO IMG] Shot error:', r.reason?.message)
       errors.push(r.reason?.message?.slice(0, 120) || 'unknown')
     }
   }
 
-  if (images.length === 0) {
+  if (gallery.length === 0 && thumbnails.length === 0) {
     return NextResponse.json({ error: `画像生成に失敗しました: ${errors[0] || 'unknown'}` }, { status: 502 })
   }
 
-  return NextResponse.json({ images, errors: errors.length ? errors : undefined })
+  return NextResponse.json({ gallery, thumbnails, errors: errors.length ? errors : undefined })
 }
