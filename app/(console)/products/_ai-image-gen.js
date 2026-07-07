@@ -35,7 +35,7 @@ async function uploadToCloudinary(b64OrFile, folder = 'products') {
   return json.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/')
 }
 
-export default function AiImageGen({ productName, productType, category, color, onGalleryReady, onThumbnailSelected }) {
+export default function AiImageGen({ productName, productType, category, color, specs = [], onGalleryReady, onThumbnailSelected }) {
   const [refFile,     setRefFile]     = useState(null)
   const [refPreview,  setRefPreview]  = useState('')
   const [status,      setStatus]      = useState('idle')
@@ -77,7 +77,7 @@ export default function AiImageGen({ productName, productType, category, color, 
       const res  = await fetch('/api/generate-images', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ imageUrl: refUrl, productName, productType, category, color }),
+        body:    JSON.stringify({ imageUrl: refUrl, productName, productType, category, color, specs }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || '生成に失敗しました')

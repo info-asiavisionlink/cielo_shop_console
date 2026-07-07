@@ -65,12 +65,32 @@ const THUMBNAIL_SHOTS = [
   },
 ]
 
-function buildPrompt(shot, productName, productType, category, color) {
-  const type  = productType || (category === 'jewelry' ? 'accessory' : category === 'apparel' ? 'garment' : 'piece')
-  const col   = color || 'silver'
+function buildPrompt(shot, productName, productType, category, color, specs) {
+  const type = productType || (category === 'jewelry' ? 'accessory' : category === 'apparel' ? 'garment' : 'piece')
+  const col  = color || ''
+
+  // Specs → key facts string (Material, Stone, Plating etc.)
+  const specFacts = Array.isArray(specs) && specs.length
+    ? specs
+        .filter(s => s.spec_key && s.spec_value)
+        .map(s => `${s.spec_key}: ${s.spec_value}`)
+        .join(', ')
+    : ''
+
+  // Product context block
+  const productContext = [
+    productName                && `Product name: ${productName}`,
+    type                       && `Type: ${type}`,
+    col                        && `Color: ${col}`,
+    specFacts                  && `Materials and specs — ${specFacts}`,
+  ].filter(Boolean).join('. ')
+
   return (
-    `CIELO brand, silent luxury, street luxury aesthetic. ${shot.prompt(productName, type, col)} ` +
-    `Style: dark, cinematic, desaturated, high contrast. No price tags, no other brand logos, no text.`
+    `CIELO brand, silent luxury, street luxury aesthetic. ` +
+    `${productContext}. ` +
+    `${shot.prompt(productName, type, col)} ` +
+    `Style: dark, cinematic, desaturated, high contrast. No price tags, no other brand logos, no text. ` +
+    `The product in the image must match exactly: ${productContext}.`
   )
 }
 
@@ -94,8 +114,9 @@ export async function POST(request) {
     return NextResponse.json({ error: `リクエスト解析エラー: ${e.message}` }, { status: 400 })
   }
 
-  const { imageUrl, productName = '', productType = '', category = '', color = '' } = body || {}
+  const { imageUrl, productName = '', productType = '', category = '', color = '', specs = [] } = body || {}
   console.log('[CIELO IMG] imageUrl received:', imageUrl?.slice(0, 80))
+  console.log('[CIELO IMG] product:', productName, '| type:', productType, '| color:', color, '| specs:', specs.length)
 
   if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('https://')) {
     return NextResponse.json({ error: `参照画像のURLが不正です (received: ${String(imageUrl).slice(0,50)})` }, { status: 400 })
@@ -124,7 +145,7 @@ export async function POST(request) {
 
   const results = await Promise.allSettled(
     allShots.map(async (shot) => {
-      const prompt = buildPrompt(shot, productName, productType, category, color)
+      const prompt = buildPrompt(shot, productName, productType, category, color, specs)
       const response = await openai.images.edit({
         model:  MODEL,
         image:  imageFile,

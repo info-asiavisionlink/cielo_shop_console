@@ -424,6 +424,7 @@ export function ProductForm({ product }) {
           productType={productType}
           category={category}
           color={productColor}
+          specs={specs.filter(s => s.spec_key && s.spec_value)}
           onGalleryReady={urls => {
             // ギャラリー画像 → slots 2-5
             setImages(prev => {
