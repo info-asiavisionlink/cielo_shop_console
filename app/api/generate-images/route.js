@@ -58,13 +58,23 @@ export async function POST(request) {
 
   // Parse JSON body — imageUrl は Cloudinary で事前アップロード済み
   let body
-  try { body = await request.json() }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
+  try {
+    const rawText = await request.text()
+    console.log('[CIELO IMG] raw body length:', rawText.length, 'preview:', rawText.slice(0, 200))
+    if (!rawText || rawText.trim() === '') {
+      return NextResponse.json({ error: 'リクエストボディが空です。再度試してください。' }, { status: 400 })
+    }
+    body = JSON.parse(rawText)
+  } catch (e) {
+    console.error('[CIELO IMG] JSON parse error:', e.message)
+    return NextResponse.json({ error: `リクエスト解析エラー: ${e.message}` }, { status: 400 })
+  }
 
   const { imageUrl, productName = '', productType = '', category = '', color = '' } = body || {}
+  console.log('[CIELO IMG] imageUrl received:', imageUrl?.slice(0, 80))
 
   if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('https://')) {
-    return NextResponse.json({ error: '参照画像のURLが不正です' }, { status: 400 })
+    return NextResponse.json({ error: `参照画像のURLが不正です (received: ${String(imageUrl).slice(0,50)})` }, { status: 400 })
   }
 
   let openai
