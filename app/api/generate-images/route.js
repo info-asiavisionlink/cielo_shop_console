@@ -12,50 +12,41 @@ function getOpenAI() {
   return new OpenAI({ apiKey: key })
 }
 
-/* ── Product type → shot styles ─────────────────────────────
-   Each entry is a different angle/scene for that product type.
-   All shots are LIFESTYLE/EDITORIAL — never plain product-only.
-──────────────────────────────────────────────────────────── */
-const SHOT_STYLES = [
+/* ── 5 shot styles ── */
+const SHOTS = [
   {
-    id: 'lifestyle_full',
-    desc: (type, color) =>
-      `Editorial lifestyle photo. A stylish Japanese model wearing a ${color} ${type}. Full upper body, cinematic lighting, dark moody background. Shot on medium format film. High-end luxury fashion editorial.`,
+    id: 'worn_full',
+    prompt: (name, type, color) =>
+      `Editorial fashion photo. A stylish Japanese model wearing this exact ${color} ${type}. Full upper body shot. Cinematic dark studio lighting. Luxury brand lookbook style. Do not alter the product design.`,
   },
   {
-    id: 'closeup_worn',
-    desc: (type, color) =>
-      `Extreme close-up editorial photo. A ${color} ${type} worn on a model. Focus on the piece, shallow depth of field, bokeh background, dramatic side lighting. Luxury jewelry editorial.`,
+    id: 'worn_closeup',
+    prompt: (name, type, color) =>
+      `Close-up editorial photo. This exact ${color} ${type} worn on a model. Extreme shallow depth of field, dramatic side lighting, dark background. Luxury jewelry editorial. Keep the product exactly as shown.`,
   },
   {
-    id: 'lifestyle_urban',
-    desc: (type, color) =>
-      `Street luxury editorial. Model wearing a ${color} ${type} in a dark urban environment, Tokyo night scene, soft neon reflections. Cinematic, atmospheric.`,
+    id: 'worn_urban',
+    prompt: (name, type, color) =>
+      `Street luxury editorial. Model wearing this exact ${color} ${type}, Tokyo night scene, soft neon ambient light. Atmospheric, cinematic mood. The product must look identical to the reference.`,
   },
   {
-    id: 'detail_texture',
-    desc: (type, color) =>
-      `Macro detail shot of a ${color} ${type} against dark matte surface. Dramatic raking light revealing texture and material. No human. Pure material study. Luxury product editorial.`,
+    id: 'detail_surface',
+    prompt: (name, type, color) =>
+      `Macro detail photo of this exact ${color} ${type} on a dark matte surface. Dramatic raking light showing material texture and finish. No human. Product must look identical to reference image.`,
   },
   {
-    id: 'lifestyle_seated',
-    desc: (type, color) =>
-      `Editorial fashion photo. Model seated, wearing a ${color} ${type}, hands visible, minimalist dark studio backdrop. Monochromatic palette. Shot for luxury brand lookbook.`,
+    id: 'worn_seated',
+    prompt: (name, type, color) =>
+      `Luxury brand editorial. Seated model wearing this exact ${color} ${type}, minimalist dark studio. Hands visible. Shot for high-fashion lookbook. Product must appear exactly as in reference.`,
   },
 ]
 
-/* ── Jewelry/Apparel specific overrides ───────────────────── */
-function buildPrompt(productName, productType, category, color, shot) {
-  const typeLabel = productType || (category === 'jewelry' ? 'necklace' : category === 'apparel' ? 'T-shirt' : 'piece')
-  const colorLabel = color || 'silver'
-  const base = shot.desc(typeLabel, colorLabel)
-
+function buildPrompt(shot, productName, productType, category, color) {
+  const type  = productType || (category === 'jewelry' ? 'accessory' : category === 'apparel' ? 'garment' : 'piece')
+  const col   = color || 'silver'
   return (
-    `CIELO brand, street luxury aesthetic, silent luxury. ${base} ` +
-    `Brand: CIELO. Style: dark, cinematic, Tokyo, high fashion. ` +
-    `Do NOT show price tags, logos of other brands, or text overlays. ` +
-    `Product: ${productName}. ` +
-    `Photography style: medium format, desaturated, high contrast shadows.`
+    `CIELO brand, silent luxury, street luxury aesthetic. ${shot.prompt(productName, type, col)} ` +
+    `Style: dark, cinematic, desaturated, high contrast. No price tags, no other brand logos, no text.`
   )
 }
 
@@ -65,29 +56,45 @@ export async function POST(request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body
-  try { body = await request.json() }
+  // Parse multipart form
+  let formData
+  try { formData = await request.formData() }
   catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
 
-  const { productName, productType, category, color } = body || {}
-  if (!productName && !productType) {
-    return NextResponse.json({ error: '商品名または種別を入力してから生成してください' }, { status: 400 })
+  const sourceFile   = formData.get('image')       // reference product image
+  const productName  = formData.get('productName') || ''
+  const productType  = formData.get('productType') || ''
+  const category     = formData.get('category')    || ''
+  const color        = formData.get('color')        || ''
+
+  if (!sourceFile || sourceFile.size === 0) {
+    return NextResponse.json({ error: '参照画像をアップロードしてください' }, { status: 400 })
+  }
+
+  // Validate image type
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+  if (!allowedTypes.includes(sourceFile.type)) {
+    return NextResponse.json({ error: '対応形式: PNG, JPEG, WebP' }, { status: 400 })
   }
 
   let openai
   try { openai = getOpenAI() }
   catch (e) { return NextResponse.json({ error: e.message }, { status: 502 }) }
 
-  // Generate 5 images in parallel
+  // Convert to File for OpenAI SDK
+  const buffer    = Buffer.from(await sourceFile.arrayBuffer())
+  const imageFile = new File([buffer], 'product-reference.png', { type: 'image/png' })
+
+  // Generate 5 shots in parallel using images.edit (image-to-image)
   const results = await Promise.allSettled(
-    SHOT_STYLES.map(async (shot) => {
-      const prompt = buildPrompt(productName || productType, productType, category, color, shot)
-      const response = await openai.images.generate({
-        model:   MODEL,
+    SHOTS.map(async (shot) => {
+      const prompt = buildPrompt(shot, productName, productType, category, color)
+      const response = await openai.images.edit({
+        model:  MODEL,
+        image:  imageFile,
         prompt,
-        n:       1,
-        size:    '1024x1024',
-        quality: 'medium',
+        n:      1,
+        size:   '1024x1024',
       })
       const b64 = response.data?.[0]?.b64_json
       if (!b64) throw new Error('No image data returned')
@@ -97,18 +104,16 @@ export async function POST(request) {
 
   const images = []
   const errors = []
-
   for (const r of results) {
-    if (r.status === 'fulfilled') {
-      images.push(r.value)
-    } else {
-      console.error('[CIELO IMG] Generation error:', r.reason?.message)
-      errors.push(r.reason?.message?.slice(0, 100) || 'unknown')
+    if (r.status === 'fulfilled') images.push(r.value)
+    else {
+      console.error('[CIELO IMG] Shot error:', r.reason?.message)
+      errors.push(r.reason?.message?.slice(0, 120) || 'unknown')
     }
   }
 
   if (images.length === 0) {
-    return NextResponse.json({ error: '画像の生成に失敗しました。再度お試しください。' }, { status: 502 })
+    return NextResponse.json({ error: `画像生成に失敗しました: ${errors[0] || 'unknown'}` }, { status: 502 })
   }
 
   return NextResponse.json({ images, errors: errors.length ? errors : undefined })
