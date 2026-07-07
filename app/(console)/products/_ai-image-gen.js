@@ -9,27 +9,55 @@ const SHOT_LABELS = {
   worn_seated:    'Lifestyle — Seated',
 }
 
-export default function AiImageGen({ productName, productType, category, color, onImagesReady }) {
-  const [refImage,  setRefImage]  = useState(null)   // File object
-  const [refPreview, setRefPreview] = useState('')   // object URL for preview
-  const [status,    setStatus]    = useState('idle')
-  const [progress,  setProgress]  = useState('')
-  const [error,     setError]     = useState('')
-  const [previews,  setPreviews]  = useState([])
-  const inputRef = useRef()
+async function uploadRefToCloudinary(file) {
+  const cloudName    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+  if (!cloudName || !uploadPreset) throw new Error('Cloudinary 環境変数が未設定')
+  const fd = new FormData()
+  fd.append('file',          file)
+  fd.append('upload_preset', uploadPreset)
+  fd.append('folder',        'products/ref')
+  const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd })
+  const json = await res.json()
+  if (!res.ok || json.error) throw new Error(json.error?.message || 'アップロード失敗')
+  // 変換なし（オリジナルURLでOpenAIへ）
+  return json.secure_url
+}
 
-  const canGenerate = !!refImage
+async function uploadResultToCloudinary(b64, index) {
+  const cloudName    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+  const bytes = atob(b64)
+  const arr   = new Uint8Array(bytes.length)
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
+  const blob = new Blob([arr], { type: 'image/png' })
+  const fd   = new FormData()
+  fd.append('file',          blob, `cielo-ai-${index}.png`)
+  fd.append('upload_preset', uploadPreset)
+  fd.append('folder',        'products')
+  const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd })
+  const json = await res.json()
+  if (!res.ok || json.error) throw new Error(json.error?.message || 'Upload failed')
+  return json.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/')
+}
+
+export default function AiImageGen({ productName, productType, category, color, onImagesReady }) {
+  const [refFile,    setRefFile]    = useState(null)
+  const [refPreview, setRefPreview] = useState('')
+  const [status,     setStatus]     = useState('idle')
+  const [progress,   setProgress]   = useState('')
+  const [error,      setError]      = useState('')
+  const [previews,   setPreviews]   = useState([])
+  const inputRef = useRef()
 
   function handleRefFile(file) {
     if (!file) return
-    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
-    if (!allowed.includes(file.type)) { setError('PNG / JPEG / WebP のみ対応'); return }
+    const ok = ['image/png','image/jpeg','image/jpg','image/webp']
+    if (!ok.includes(file.type)) { setError('PNG / JPEG / WebP のみ対応'); return }
     if (refPreview) URL.revokeObjectURL(refPreview)
-    setRefImage(file)
+    setRefFile(file)
     setRefPreview(URL.createObjectURL(file))
-    setError('')
-    setStatus('idle')
-    setPreviews([])
+    setError(''); setStatus('idle'); setPreviews([])
   }
 
   function handleDrop(e) {
@@ -38,85 +66,62 @@ export default function AiImageGen({ productName, productType, category, color, 
     handleRefFile(e.dataTransfer.files?.[0])
   }
 
-  async function uploadToCloudinary(b64, index) {
-    const cloudName    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-    if (!cloudName || !uploadPreset) throw new Error('Cloudinary 環境変数が未設定')
-    const bytes = atob(b64)
-    const arr   = new Uint8Array(bytes.length)
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
-    const blob = new Blob([arr], { type: 'image/png' })
-    const fd   = new FormData()
-    fd.append('file', blob, `cielo-ai-${index}.png`)
-    fd.append('upload_preset', uploadPreset)
-    fd.append('folder', 'products')
-    const res  = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: fd })
-    const json = await res.json()
-    if (!res.ok || json.error) throw new Error(json.error?.message || 'Upload failed')
-    return json.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_1200/')
-  }
-
   async function generate() {
-    if (!canGenerate) return
-    setStatus('generating')
-    setError('')
-    setPreviews([])
+    if (!refFile) return
+    setStatus('uploading_ref'); setError(''); setPreviews([])
 
     try {
-      // Build multipart form with reference image
-      setProgress('AI が商品画像を解析・生成しています（約30〜90秒）...')
-      const fd = new FormData()
-      fd.append('image',       refImage)
-      fd.append('productName', productName || '')
-      fd.append('productType', productType || '')
-      fd.append('category',    category    || '')
-      fd.append('color',       color       || '')
+      // Step 1: 参照画像を Cloudinary にアップロード
+      setProgress('参照画像をアップロード中...')
+      const refUrl = await uploadRefToCloudinary(refFile)
 
-      const res  = await fetch('/api/generate-images', { method: 'POST', body: fd })
+      // Step 2: URLをAPIに渡して生成（JSONのみ送信 → Vercel制限なし）
+      setStatus('generating')
+      setProgress('AI が画像を生成しています（約30〜90秒）...')
+      const res  = await fetch('/api/generate-images', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ imageUrl: refUrl, productName, productType, category, color }),
+      })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || '生成に失敗しました')
 
       const { images } = data
 
-      // Upload to Cloudinary
-      setStatus('uploading')
+      // Step 3: 生成結果を Cloudinary にアップロード
+      setStatus('uploading_results')
       const urls = []
       for (let i = 0; i < images.length; i++) {
         setProgress(`Cloudinary にアップロード中 (${i + 1}/${images.length})...`)
-        const url = await uploadToCloudinary(images[i].b64, i + 1)
+        const url = await uploadResultToCloudinary(images[i].b64, i + 1)
         urls.push(url)
         setPreviews(prev => [...prev, { url, label: SHOT_LABELS[images[i].id] || images[i].id }])
       }
 
-      setStatus('done')
-      setProgress('')
+      setStatus('done'); setProgress('')
       onImagesReady?.(urls)
     } catch (e) {
-      setStatus('error')
-      setError(e.message)
-      setProgress('')
+      setStatus('error'); setError(e.message); setProgress('')
     }
   }
 
   function reset() {
     if (refPreview) URL.revokeObjectURL(refPreview)
-    setRefImage(null); setRefPreview('')
+    setRefFile(null); setRefPreview('')
     setStatus('idle'); setError(''); setProgress(''); setPreviews([])
     if (inputRef.current) inputRef.current.value = ''
   }
 
-  const busy = status === 'generating' || status === 'uploading'
+  const busy = ['uploading_ref','generating','uploading_results'].includes(status)
 
   return (
     <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(240,244,255,.07)' }}>
-
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-2)' }}>AI 商品画像生成</span>
         <span style={{ fontSize: 10, color: 'var(--text-3)' }}>— 商品写真からライフスタイル画像5枚を生成</span>
       </div>
 
-      {/* Reference image upload */}
+      {/* 参照画像アップロード */}
       <div
         onDrop={handleDrop}
         onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over') }}
@@ -124,48 +129,44 @@ export default function AiImageGen({ productName, productType, category, color, 
         onClick={() => !busy && inputRef.current?.click()}
         style={{
           display: 'flex', alignItems: 'center', gap: 12,
-          border: `1px dashed ${refImage ? 'rgba(200,169,110,0.5)' : 'rgba(240,244,255,0.12)'}`,
-          borderRadius: 4, padding: '12px 14px',
+          border: `1px dashed ${refFile ? 'rgba(200,169,110,0.5)' : 'rgba(240,244,255,0.12)'}`,
+          borderRadius: 4, padding: '12px 14px', marginBottom: 12,
           cursor: busy ? 'wait' : 'pointer',
-          background: refImage ? 'rgba(200,169,110,0.03)' : 'transparent',
+          background: refFile ? 'rgba(200,169,110,0.03)' : 'transparent',
           transition: 'border-color 0.2s',
-          marginBottom: 12,
         }}
       >
-        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }}
-          onChange={e => handleRefFile(e.target.files?.[0])} />
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp"
+          style={{ display: 'none' }} onChange={e => handleRefFile(e.target.files?.[0])} />
 
         {refPreview ? (
           <>
             <img src={refPreview} alt="参照画像"
               style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: 11, color: 'rgba(240,244,255,.7)', marginBottom: 2 }}>{refImage?.name}</div>
+              <div style={{ fontSize: 11, color: 'rgba(240,244,255,.7)', marginBottom: 2 }}>{refFile?.name}</div>
               <div style={{ fontSize: 10, color: 'var(--text-3)' }}>クリックして変更</div>
             </div>
           </>
         ) : (
           <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
             商品の参照画像をドロップ、またはクリックして選択
-            <div style={{ fontSize: 10, marginTop: 2, opacity: 0.6 }}>PNG / JPEG / WebP — この画像をもとにライフスタイル画像を生成</div>
+            <div style={{ fontSize: 10, marginTop: 2, opacity: 0.6 }}>この画像をもとにライフスタイル画像を生成します</div>
           </div>
         )}
       </div>
 
-      {/* Progress / Error */}
       {busy && <div style={{ fontSize: 11, color: 'var(--gold)', marginBottom: 10, opacity: 0.8 }}>{progress}</div>}
-      {error && <div style={{ fontSize: 11, color: 'var(--danger, #e53e3e)', marginBottom: 10 }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color: 'var(--danger,#e53e3e)', marginBottom: 10 }}>{error}</div>}
 
-      {/* Done notice */}
       {status === 'done' && (
         <div style={{ fontSize: 11, color: 'var(--gold)', padding: '6px 10px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.2)', borderRadius: 3, marginBottom: 12 }}>
-          {previews.length}枚を生成・アップロードし、画像スロットに反映しました。
+          {previews.length}枚を生成・アップロードし画像スロットに反映しました。
         </div>
       )}
 
-      {/* Generated previews */}
       {previews.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6, marginBottom: 12 }}>
           {previews.map((p, i) => (
             <div key={i}>
               <img src={p.url} alt={p.label}
@@ -176,19 +177,17 @@ export default function AiImageGen({ productName, productType, category, color, 
         </div>
       )}
 
-      {/* Controls */}
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button type="button" className="btn btn-ghost btn-sm"
-          disabled={busy || !canGenerate}
-          onClick={generate}
+          disabled={busy || !refFile} onClick={generate}
           style={{ fontSize: 11, letterSpacing: '0.08em' }}>
-          {busy ? '生成中...' : status === 'done' ? '再生成' : 'GENERATE IMAGES'}
+          {busy ? '処理中...' : status === 'done' ? '再生成' : 'GENERATE IMAGES'}
         </button>
-        {(refImage || status !== 'idle') && !busy && (
+        {(refFile || status !== 'idle') && !busy && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={reset} style={{ fontSize: 11 }}>リセット</button>
         )}
+        {!refFile && <span style={{ fontSize: 10, color: 'var(--text-3)' }}>参照画像をアップロードすると生成できます</span>}
       </div>
-      {!refImage && <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 6 }}>参照画像をアップロードすると生成できます</div>}
     </div>
   )
 }

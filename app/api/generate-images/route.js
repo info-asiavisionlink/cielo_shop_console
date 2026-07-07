@@ -56,34 +56,31 @@ export async function POST(request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Parse multipart form
-  let formData
-  try { formData = await request.formData() }
+  // Parse JSON body — imageUrl は Cloudinary で事前アップロード済み
+  let body
+  try { body = await request.json() }
   catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
 
-  const sourceFile   = formData.get('image')       // reference product image
-  const productName  = formData.get('productName') || ''
-  const productType  = formData.get('productType') || ''
-  const category     = formData.get('category')    || ''
-  const color        = formData.get('color')        || ''
+  const { imageUrl, productName = '', productType = '', category = '', color = '' } = body || {}
 
-  if (!sourceFile || sourceFile.size === 0) {
-    return NextResponse.json({ error: '参照画像をアップロードしてください' }, { status: 400 })
-  }
-
-  // Validate image type
-  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
-  if (!allowedTypes.includes(sourceFile.type)) {
-    return NextResponse.json({ error: '対応形式: PNG, JPEG, WebP' }, { status: 400 })
+  if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('https://')) {
+    return NextResponse.json({ error: '参照画像のURLが不正です' }, { status: 400 })
   }
 
   let openai
   try { openai = getOpenAI() }
   catch (e) { return NextResponse.json({ error: e.message }, { status: 502 }) }
 
-  // Convert to File for OpenAI SDK
-  const buffer    = Buffer.from(await sourceFile.arrayBuffer())
-  const imageFile = new File([buffer], 'product-reference.png', { type: 'image/png' })
+  // Cloudinary から参照画像をダウンロード（サーバー→サーバー、Vercel制限なし）
+  let imageFile
+  try {
+    const imgRes = await fetch(imageUrl)
+    if (!imgRes.ok) throw new Error('参照画像のダウンロードに失敗しました')
+    const buffer = Buffer.from(await imgRes.arrayBuffer())
+    imageFile    = new File([buffer], 'product-reference.png', { type: 'image/png' })
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 422 })
+  }
 
   // Generate 5 shots in parallel using images.edit (image-to-image)
   const results = await Promise.allSettled(
