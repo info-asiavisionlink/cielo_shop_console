@@ -4,7 +4,7 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-const CAT_LABEL = { jewelry: 'Jewelry', apparel: 'Apparel', art: 'Art' }
+const CAT_LABEL = { jewelry: 'Accessories', apparel: 'Apparel', art: 'Art' }
 
 export default async function ProductsPage({ searchParams }) {
   const cat = searchParams?.cat || 'all'
@@ -29,7 +29,7 @@ export default async function ProductsPage({ searchParams }) {
       <div className="page-content">
         {/* Category Filter */}
         <div className="filter-bar">
-          {[['all','すべて'],['jewelry','Jewelry'],['apparel','Apparel'],['art','Art']].map(([val, label]) => (
+          {[['all','すべて'],['jewelry','Accessories'],['apparel','Apparel'],['art','Art']].map(([val, label]) => (
             <Link
               key={val}
               href={`/products${val === 'all' ? '' : `?cat=${val}`}`}
