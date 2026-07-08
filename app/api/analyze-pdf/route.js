@@ -40,23 +40,24 @@ Return valid JSON only. Use null for unknown fields. Do not add markdown fences.
 
 For jewelry/accessories products, also return a "care" object with CIELO brand-voice care instructions.
 Generate each care text based on the actual materials found (base metal, plating, stone type).
-Write in quiet, concise Japanese. No bullet points. No warnings. No "×" symbols.
-Each value should be 1-3 sentences max. If material info is insufficient, return null for that field.
+Write in gentle, practical Japanese — like a friend giving advice, not a warning label.
+Do NOT use strong prohibitions. Use soft, reassuring guidance instead.
+Each value: 1-2 short sentences. If material info is insufficient, return null for that field.
 
-Example for Brass + Gold Plating + CZ:
+Example tone for Brass + Gold Plating + CZ:
 {
   "care": {
-    "水耐性": "日常的な軽い水濡れは問題ありませんが、着用後は柔らかな布で水分を拭き取ってください。",
-    "汗耐性": "着用は可能ですが、使用後は汗や皮脂を柔らかな布で拭き取ってください。長時間の着用は変色の原因となります。",
-    "海水耐性": "海水への長時間の接触は避けてください。接触した場合は、すぐに真水で洗い流し、乾いた布で拭き取ってください。",
-    "シャワー使用": "シャワーや入浴時の着用は推奨しておりません。石鹸やシャンプーの成分がメッキを傷める可能性があります。",
-    "プール使用": "プールの塩素は金属とメッキを傷めます。プールでの着用はお控えください。",
-    "温泉使用": "硫黄成分を含む温泉はメッキの変色・劣化を招きます。温泉での着用はお控えください。",
-    "香水・化粧品": "香水、化粧品、日焼け止めなどの化学成分はメッキを傷める原因となります。着用前に充分乾燥させてからお使いください。",
-    "日常のお手入れ": "使用後は柔らかな布で軽く拭き取り、清潔な状態を保ってください。研磨剤入りのクロスや化学薬品のご使用はお避けください。",
-    "保管方法": "直射日光と高湿度を避け、付属の袋や個別のケースに入れて保管してください。他のジュエリーとの接触による傷つきにご注意ください。",
-    "石の特徴": "キュービックジルコニアは高い屈折率を持ち、ダイヤモンドに近い輝きを放ちます。モース硬度は約8.5で、日常使用に十分な耐久性があります。",
-    "石のお手入れ": "石の汚れは柔らかい歯ブラシと中性洗剤を薄めたぬるま湯で優しく洗い、よくすすいでください。超音波洗浄機のご使用はお避けください。"
+    "水耐性": "軽い水濡れは問題ありません。着用後は柔らかな布で軽く拭くだけで十分です。",
+    "汗耐性": "日常的な着用には問題ありません。スポーツ後など汗をかいた場合は、乾いた布で軽く拭き取ってください。",
+    "海水耐性": "海水に触れた後は、真水で軽くすすいで乾かしてください。",
+    "シャワー使用": "シャワーを浴びたまま着用しても問題ありませんが、石鹸が付いた場合は水で流してください。",
+    "プール使用": "プールの塩素は長時間の浸漬でメッキに影響が出る場合があります。使用後は水で流してください。",
+    "温泉使用": "温泉成分（硫黄など）が付着した場合は、早めに水で流してください。",
+    "香水・化粧品": "香水や化粧品は乾いてから着用するのがおすすめです。",
+    "日常のお手入れ": "使用後に柔らかな布で軽く拭くだけで、長くきれいな状態が保てます。",
+    "保管方法": "付属の袋やケースに入れて保管してください。他のアクセサリーとの接触による傷つきを防げます。",
+    "石の特徴": "キュービックジルコニアは高い屈折率を持ち、ダイヤモンドに近い輝きを放ちます。モース硬度は約8.5で、日常使いに十分な耐久性があります。",
+    "石のお手入れ": "汚れが気になる場合は、柔らかい歯ブラシとぬるま湯で優しく洗うだけで輝きが戻ります。"
   }
 }`
 
