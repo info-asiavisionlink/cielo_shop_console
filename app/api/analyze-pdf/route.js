@@ -59,6 +59,11 @@ const USER_PROMPT = `Analyze this product and return a JSON object with these ex
 }
 
 specs should include all clearly verifiable product attributes (material, stone, plating, dimensions, weight, finish, etc.).
+For accessories/jewelry, also extract if available:
+- Water Resistance (e.g. "Splash resistant", "Not waterproof", "IP67")
+- Seawater Resistance (e.g. "Not recommended", "Rinse after contact")
+- Stone Hardness (Mohs scale, e.g. "Mohs 9.25" for Moissanite, "Mohs 10" for Diamond, "Mohs 8" for CZ)
+If these are not stated, return null for them — do NOT invent values.
 Do NOT include price, MOQ, or marketplace data in specs.`
 
 /* ── Path A: Text PDF → Chat Completions ─────────────────── */

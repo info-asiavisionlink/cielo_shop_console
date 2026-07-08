@@ -110,15 +110,18 @@ const BASE_PRODUCT_TYPES = {
 /* ─── Spec templates per category ─── */
 const SPEC_TEMPLATES = {
   jewelry: [
-    { spec_key: 'Material',          spec_value: '' },
-    { spec_key: 'Stone',             spec_value: '' },
-    { spec_key: 'Plating',           spec_value: '' },
-    { spec_key: 'Length',            spec_value: '' },
-    { spec_key: 'Width',             spec_value: '' },
-    { spec_key: 'Weight',            spec_value: '' },
-    { spec_key: 'Clasp',             spec_value: '' },
-    { spec_key: 'Country of Origin', spec_value: '' },
-    { spec_key: 'Care',              spec_value: '' },
+    { spec_key: 'Material',            spec_value: '' },
+    { spec_key: 'Stone',               spec_value: '' },
+    { spec_key: 'Stone Hardness',      spec_value: '' },
+    { spec_key: 'Plating',             spec_value: '' },
+    { spec_key: 'Length',              spec_value: '' },
+    { spec_key: 'Width',               spec_value: '' },
+    { spec_key: 'Weight',              spec_value: '' },
+    { spec_key: 'Clasp',               spec_value: '' },
+    { spec_key: 'Water Resistance',    spec_value: '' },
+    { spec_key: 'Seawater Resistance', spec_value: '' },
+    { spec_key: 'Country of Origin',   spec_value: '' },
+    { spec_key: 'Care',                spec_value: '' },
   ],
   apparel: [
     { spec_key: 'Material',          spec_value: '' },
