@@ -87,6 +87,7 @@ export async function createProduct(formData) {
 
   await _saveImages(db, productId, formData.get('images_json'))
   await _saveSpecs(db, productId, category, formData.get('specs_json'))
+  await _saveCareSpecs(db, productId, formData.get('care_json'))
   await _saveVariants(db, productId, formData.get('variants_json'))
   await _saveTags(db, productId, formData.get('tags_json'))
 
@@ -127,6 +128,7 @@ export async function updateProduct(id, formData) {
 
   await _saveImages(db, id, formData.get('images_json'))
   await _saveSpecs(db, id, category, formData.get('specs_json'))
+  await _saveCareSpecs(db, id, formData.get('care_json'))
   await _saveVariants(db, id, formData.get('variants_json'))
   await _saveTags(db, id, formData.get('tags_json'))
 
@@ -157,7 +159,8 @@ async function _saveSpecs(db, productId, category, specsJson) {
   try { if (specsJson) specs = JSON.parse(specsJson) } catch {}
   const valid = specs.filter(s => s.spec_key?.trim() && s.spec_value?.trim())
 
-  await db.from('product_specs').delete().eq('product_id', productId)
+  // care タイプは別関数で管理するため削除しない
+  await db.from('product_specs').delete().eq('product_id', productId).neq('spec_type', 'care')
   if (!valid.length) return
 
   await db.from('product_specs').insert(valid.map((s, i) => ({
@@ -165,6 +168,22 @@ async function _saveSpecs(db, productId, category, specsJson) {
     spec_type:  category || 'jewelry',
     spec_key:   s.spec_key.trim(),
     spec_value: s.spec_value.trim(),
+    sort_order: i,
+  })))
+}
+
+async function _saveCareSpecs(db, productId, careJson) {
+  let care = {}
+  try { if (careJson) care = JSON.parse(careJson) } catch {}
+  const entries = Object.entries(care).filter(([, v]) => v?.trim())
+  if (!entries.length) return
+
+  await db.from('product_specs').delete().eq('product_id', productId).eq('spec_type', 'care')
+  await db.from('product_specs').insert(entries.map(([key, value], i) => ({
+    product_id: productId,
+    spec_type:  'care',
+    spec_key:   key,
+    spec_value: value.trim(),
     sort_order: i,
   })))
 }

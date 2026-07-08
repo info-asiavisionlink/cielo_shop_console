@@ -201,6 +201,18 @@ export function ProductForm({ product }) {
   }
   const [images, setImages] = useState(initImages)
 
+  /* ── Care info ── */
+  const CARE_KEYS = ['水耐性','汗耐性','海水耐性','シャワー使用','プール使用','温泉使用','香水・化粧品','日常のお手入れ','保管方法','石の特徴','石のお手入れ']
+  const [careInfo, setCareInfo] = useState(() => {
+    const initial = {}
+    CARE_KEYS.forEach(k => { initial[k] = '' })
+    // 既存商品から読み込み
+    const careSpecs = (product?.product_specs || []).filter(s => s.spec_type === 'care')
+    careSpecs.forEach(s => { if (s.spec_key in initial) initial[s.spec_key] = s.spec_value || '' })
+    return initial
+  })
+  const [aiFilledCare, setAiFilledCare] = useState(false)
+
   /* ── Variants ── */
   const [variants, setVariants] = useState(
     (product?.product_variants || [])
@@ -360,6 +372,18 @@ export function ProductForm({ product }) {
     }
     if (Array.isArray(draft.variant_suggestions)) setVariantSuggestions(draft.variant_suggestions)
     if (Array.isArray(draft.review_required))     setReviewRequired(draft.review_required)
+
+    // アクセサリーのケア情報を自動入力
+    if (draft.care && typeof draft.care === 'object') {
+      setCareInfo(prev => {
+        const next = { ...prev }
+        Object.entries(draft.care).forEach(([k, v]) => { if (k in next && v) next[k] = v })
+        return next
+      })
+      setAiFilledCare(true)
+      filled.add('care')
+    }
+
     setAiDraftFields(filled)
   }
 
@@ -381,6 +405,7 @@ export function ProductForm({ product }) {
   return (
     <>
       {/* ─ JSON hidden inputs ─ */}
+      <input type="hidden" name="care_json" value={JSON.stringify(careInfo)} />
       <input type="hidden" name="specs_json" value={JSON.stringify(
         productColor.trim()
           ? [{ spec_key: 'カラー', spec_value: productColor.trim() }, ...specs.filter(s => !['Color','カラー','colour'].includes(s.spec_key))]
@@ -631,6 +656,49 @@ export function ProductForm({ product }) {
               ))}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ══ 耐性・ケア情報（アクセサリーのみ） ══ */}
+      {category === 'jewelry' && (
+        <div className="form-section">
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            耐性・ケア情報
+            {aiFilledCare && (
+              <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI DRAFT</span>
+            )}
+            <span className="form-hint" style={{ marginLeft: 4 }}>SHOPのケアセクションに表示されます</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              ['水耐性',     'WATER',     '日常的な軽い水濡れの後は、柔らかな布で水分を拭き取ってください。'],
+              ['汗耐性',     'SWEAT',     '使用後は汗や皮脂を柔らかな布で拭き取ってください。'],
+              ['海水耐性',   'SEA WATER', '海水への長時間の接触は避けてください。'],
+              ['シャワー使用','SHOWER',   'シャワーや入浴時の着用は推奨しておりません。'],
+              ['プール使用', 'POOL',      'プールの塩素は金属を傷めます。'],
+              ['温泉使用',   'HOT SPRING','硫黄成分を含む温泉での着用はお控えください。'],
+              ['香水・化粧品','FRAGRANCE','着用前に充分乾燥させてからお使いください。'],
+              ['日常のお手入れ','DAILY CARE','使用後は柔らかな布で軽く拭き取ってください。'],
+              ['保管方法',   'STORAGE',   '付属の袋や個別のケースに入れて保管してください。'],
+              ['石の特徴',   'STONE',     '石の種類と特徴を入力してください。'],
+              ['石のお手入れ','STONE CARE','石のお手入れ方法を入力してください。'],
+            ].map(([key, label, ph]) => (
+              <div key={key} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, alignItems: 'start' }}>
+                <div style={{ paddingTop: 8 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--gold)', opacity: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>{key}</div>
+                </div>
+                <textarea
+                  className="form-textarea"
+                  rows={2}
+                  placeholder={ph}
+                  value={careInfo[key] || ''}
+                  onChange={e => setCareInfo(prev => ({ ...prev, [key]: e.target.value }))}
+                  style={{ fontSize: 12, lineHeight: 1.6, resize: 'vertical' }}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

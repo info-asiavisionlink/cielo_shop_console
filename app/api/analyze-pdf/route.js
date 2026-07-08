@@ -36,7 +36,29 @@ CIELO BRAND COPY RULES:
 - Focus on: materials, craftsmanship, wearable impression, personal ownership
 - Description: 2–4 sentences max
 
-Return valid JSON only. Use null for unknown fields. Do not add markdown fences.`
+Return valid JSON only. Use null for unknown fields. Do not add markdown fences.
+
+For jewelry/accessories products, also return a "care" object with CIELO brand-voice care instructions.
+Generate each care text based on the actual materials found (base metal, plating, stone type).
+Write in quiet, concise Japanese. No bullet points. No warnings. No "×" symbols.
+Each value should be 1-3 sentences max. If material info is insufficient, return null for that field.
+
+Example for Brass + Gold Plating + CZ:
+{
+  "care": {
+    "水耐性": "日常的な軽い水濡れは問題ありませんが、着用後は柔らかな布で水分を拭き取ってください。",
+    "汗耐性": "着用は可能ですが、使用後は汗や皮脂を柔らかな布で拭き取ってください。長時間の着用は変色の原因となります。",
+    "海水耐性": "海水への長時間の接触は避けてください。接触した場合は、すぐに真水で洗い流し、乾いた布で拭き取ってください。",
+    "シャワー使用": "シャワーや入浴時の着用は推奨しておりません。石鹸やシャンプーの成分がメッキを傷める可能性があります。",
+    "プール使用": "プールの塩素は金属とメッキを傷めます。プールでの着用はお控えください。",
+    "温泉使用": "硫黄成分を含む温泉はメッキの変色・劣化を招きます。温泉での着用はお控えください。",
+    "香水・化粧品": "香水、化粧品、日焼け止めなどの化学成分はメッキを傷める原因となります。着用前に充分乾燥させてからお使いください。",
+    "日常のお手入れ": "使用後は柔らかな布で軽く拭き取り、清潔な状態を保ってください。研磨剤入りのクロスや化学薬品のご使用はお避けください。",
+    "保管方法": "直射日光と高湿度を避け、付属の袋や個別のケースに入れて保管してください。他のジュエリーとの接触による傷つきにご注意ください。",
+    "石の特徴": "キュービックジルコニアは高い屈折率を持ち、ダイヤモンドに近い輝きを放ちます。モース硬度は約8.5で、日常使用に十分な耐久性があります。",
+    "石のお手入れ": "石の汚れは柔らかい歯ブラシと中性洗剤を薄めたぬるま湯で優しく洗い、よくすすいでください。超音波洗浄機のご使用はお避けください。"
+  }
+}`
 
 const USER_PROMPT = `Analyze this product and return a JSON object with these exact fields:
 
@@ -149,6 +171,16 @@ function sanitize(draft) {
     review_required: Array.isArray(draft.review_required)
       ? draft.review_required.filter(f => typeof f === 'string').slice(0, 20)
       : [],
+    care: (() => {
+      const c = draft.care
+      if (!c || typeof c !== 'object') return null
+      const CARE_KEYS = ['水耐性','汗耐性','海水耐性','シャワー使用','プール使用','温泉使用','香水・化粧品','日常のお手入れ','保管方法','石の特徴','石のお手入れ']
+      const result = {}
+      for (const k of CARE_KEYS) {
+        if (typeof c[k] === 'string' && c[k].trim()) result[k] = c[k].trim().slice(0, 500)
+      }
+      return Object.keys(result).length ? result : null
+    })(),
   }
 }
 
