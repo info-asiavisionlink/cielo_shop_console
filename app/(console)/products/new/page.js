@@ -184,11 +184,12 @@ export function ProductForm({ product }) {
   }
 
   /* ── Images (max 5) ── */
+  const MAX_IMAGES = 10
   const initImages = () => {
     const imgs = (product?.product_images || [])
-      .sort((a, b) => a.sort_order - b.sort_order).slice(0, 6)
+      .sort((a, b) => a.sort_order - b.sort_order).slice(0, MAX_IMAGES)
       .map(i => ({ url: i.image_url, alt: i.alt_text || '' }))
-    while (imgs.length < 6) imgs.push({ url: '', alt: '' })
+    while (imgs.length < MAX_IMAGES) imgs.push({ url: '', alt: '' })
     // アクセサリー商品の場合、slot 5（画像6）に刻印イメージを自動セット
     if ((product?.category === 'jewelry') && !imgs[5].url) {
       imgs[5] = { url: INSCRIPTION_IMAGE_URL, alt: 'Personal Inscription' }
@@ -451,7 +452,7 @@ export function ProductForm({ product }) {
           商品画像
           <span className="form-hint" style={{ marginLeft: 8 }}>1枚目がサムネイルになります{category === 'jewelry' ? '・画像6は刻印イメージ（自動）' : ''}</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
           {images.map((img, i) => (
             <ImageSlot
               key={i} index={i} value={img.url} alt={img.alt} isThumbnail={i === 0}
