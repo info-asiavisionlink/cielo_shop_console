@@ -52,6 +52,9 @@ export default function NewProductPage() {
   )
 }
 
+/* ─── アクセサリー用 刻印イメージ画像 ─── */
+const INSCRIPTION_IMAGE_URL = 'https://res.cloudinary.com/deyc8gz2k/image/upload/f_auto,q_auto,w_1200/v1783491219/products/assets/nfhuktbptq4mof5as18l.png'
+
 /* ─── Product type → subcategory slug ─── */
 const TYPE_TO_SUBCAT = {
   // Accessories
@@ -183,9 +186,13 @@ export function ProductForm({ product }) {
   /* ── Images (max 5) ── */
   const initImages = () => {
     const imgs = (product?.product_images || [])
-      .sort((a, b) => a.sort_order - b.sort_order).slice(0, 5)
+      .sort((a, b) => a.sort_order - b.sort_order).slice(0, 6)
       .map(i => ({ url: i.image_url, alt: i.alt_text || '' }))
-    while (imgs.length < 5) imgs.push({ url: '', alt: '' })
+    while (imgs.length < 6) imgs.push({ url: '', alt: '' })
+    // アクセサリー商品の場合、slot 5（画像6）に刻印イメージを自動セット
+    if ((product?.category === 'jewelry') && !imgs[5].url) {
+      imgs[5] = { url: INSCRIPTION_IMAGE_URL, alt: 'Personal Inscription' }
+    }
     return imgs
   }
   const [images, setImages] = useState(initImages)
@@ -216,6 +223,19 @@ export function ProductForm({ product }) {
   const storyJaRef    = useRef()
   const seoTitleRef   = useRef()
   const seoDescRef    = useRef()
+
+  /* category 変更時: jewelry → slot 5 に刻印画像を自動セット、他 → クリア */
+  useEffect(() => {
+    setImages(prev => {
+      const next = [...prev]
+      if (category === 'jewelry') {
+        if (!next[5]?.url) next[5] = { url: INSCRIPTION_IMAGE_URL, alt: 'Personal Inscription' }
+      } else {
+        if (next[5]?.url === INSCRIPTION_IMAGE_URL) next[5] = { url: '', alt: '' }
+      }
+      return next
+    })
+  }, [category])
 
   /* product_type 変更時に subcategory を自動更新 */
   useEffect(() => {
@@ -425,11 +445,11 @@ export function ProductForm({ product }) {
         </div>
       </div>
 
-      {/* ══ 商品画像（最大5枚） ══ */}
+      {/* ══ 商品画像（最大6枚） ══ */}
       <div className="form-section">
         <div className="form-section-title">
           商品画像
-          <span className="form-hint" style={{ marginLeft: 8 }}>1枚目がサムネイルになります</span>
+          <span className="form-hint" style={{ marginLeft: 8 }}>1枚目がサムネイルになります{category === 'jewelry' ? '・画像6は刻印イメージ（自動）' : ''}</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
           {images.map((img, i) => (
