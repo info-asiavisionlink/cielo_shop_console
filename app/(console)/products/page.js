@@ -6,19 +6,50 @@ export const dynamic = 'force-dynamic'
 
 const CAT_LABEL = { jewelry: 'Accessories', apparel: 'Apparel', art: 'Art' }
 
+const SUBCATS = {
+  jewelry: [
+    { value: 'necklace',  label: 'ネックレス' },
+    { value: 'bracelet',  label: 'ブレスレット' },
+    { value: 'ring',      label: 'リング' },
+    { value: 'anklet',    label: 'アンクレット' },
+    { value: 'earring',   label: 'イアリング' },
+  ],
+  apparel: [
+    { value: 'tshirt',     label: 'Tシャツ' },
+    { value: 'setup',      label: 'セットアップ' },
+    { value: 'hoodie',     label: 'パーカー' },
+    { value: 'longtshirt', label: 'ロングTシャツ' },
+    { value: 'swimwear',   label: '水着' },
+  ],
+  art: [
+    { value: 'pop_art',    label: 'ポップアート' },
+    { value: 'luxury_art', label: 'ラグジュアリーアート' },
+    { value: 'street_art', label: 'ストリートアート' },
+    { value: 'fan_art',    label: 'ファンアート' },
+  ],
+}
+
 export default async function ProductsPage({ searchParams }) {
-  const cat = searchParams?.cat || 'all'
+  const cat    = searchParams?.cat    || 'all'
+  const subcat = searchParams?.subcat || 'all'
+
   let products = []
   try { products = await getProducts(cat) } catch {}
 
+  // subcatフィルター（クライアント側DB query追加も可だが、件数少ないためクライアント側でフィルタリング）
+  const filtered = subcat === 'all'
+    ? products
+    : products.filter(p => (p.subcategory || '').toLowerCase() === subcat)
+
   const thumb = p => (p.product_images || []).find(i => i.is_thumbnail) || (p.product_images || [])[0]
+  const subcatList = SUBCATS[cat] || []
 
   return (
     <>
       <div className="page-header">
         <div>
           <h1 className="page-title">Products</h1>
-          <p className="page-sub">全{products.length}件</p>
+          <p className="page-sub">全{filtered.length}件</p>
         </div>
         <div className="page-actions">
           <Link href="/products/new" className="btn btn-primary">
@@ -40,8 +71,31 @@ export default async function ProductsPage({ searchParams }) {
           ))}
         </div>
 
+        {/* Subcategory Filter */}
+        {subcatList.length > 0 && (
+          <div className="filter-bar" style={{ paddingTop: 0, borderTop: 'none', gap: 4 }}>
+            <Link
+              href={`/products?cat=${cat}`}
+              className={`filter-btn${subcat === 'all' ? ' active' : ''}`}
+              style={{ fontSize: 11, padding: '6px 12px' }}
+            >
+              すべて
+            </Link>
+            {subcatList.map(s => (
+              <Link
+                key={s.value}
+                href={`/products?cat=${cat}&subcat=${s.value}`}
+                className={`filter-btn${subcat === s.value ? ' active' : ''}`}
+                style={{ fontSize: 11, padding: '6px 12px' }}
+              >
+                {s.label}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div className="table-wrap">
-          {products.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="empty-state">
               <p>📦</p>
               <p>商品がありません</p>
@@ -53,43 +107,43 @@ export default async function ProductsPage({ searchParams }) {
                   <th>商品</th>
                   <th>カテゴリ</th>
                   <th>価格</th>
-                  <th>在庫</th>
                   <th>ステータス</th>
                   <th>注目</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map(p => {
+                {filtered.map(p => {
                   const img = thumb(p)
                   return (
                     <tr key={p.id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           {img ? (
-                            <img
-                              src={img.image_url}
-                              alt={p.name}
-                              style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#222' }}
-                            />
+                            <img src={img.image_url} alt={p.name}
+                              style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#222' }} />
                           ) : (
                             <div style={{ width: 40, height: 40, background: '#222', borderRadius: 4 }} />
                           )}
                           <div>
                             <div className="td-name">{p.name}</div>
-                            {p.name_ja && <div className="td-mono">{p.name_ja}</div>}
+                            {p.subcategory && (
+                              <div className="td-mono" style={{ fontSize: 10, opacity: 0.5 }}>{p.subcategory}</div>
+                            )}
                           </div>
                         </div>
                       </td>
-                      <td>{CAT_LABEL[p.category] ?? p.category}</td>
+                      <td>
+                        <div>{CAT_LABEL[p.category] ?? p.category}</div>
+                        {p.subcategory && (
+                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 1 }}>
+                            {subcatList.find(s => s.value === p.subcategory)?.label || p.subcategory}
+                          </div>
+                        )}
+                      </td>
                       <td className="td-price">¥{p.price.toLocaleString('ja-JP')}</td>
-                      <td className="td-mono">{p.stock_count}</td>
-                      <td>
-                        <StatusToggle id={p.id} status={p.status} />
-                      </td>
-                      <td>
-                        <FeaturedToggle id={p.id} featured={p.featured} />
-                      </td>
+                      <td><StatusToggle id={p.id} status={p.status} /></td>
+                      <td><FeaturedToggle id={p.id} featured={p.featured} /></td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <Link href={`/products/${p.id}`} className="btn btn-ghost btn-sm">編集</Link>

@@ -55,30 +55,52 @@ export default function NewProductPage() {
 /* ─── Product type → subcategory slug ─── */
 const TYPE_TO_SUBCAT = {
   // Accessories
-  Necklace: 'necklace', Bracelet: 'bracelet', Earring: 'earring',
-  Ring: 'ring', Pendant: 'pendant', Anklet: 'anklet', Chain: 'chain',
-  Brooch: 'brooch', Bangle: 'bangle', Pierce: 'earring',
+  Necklace:      'necklace',
+  Bracelet:      'bracelet',
+  Earring:       'earring',
+  Ring:          'ring',
+  Anklet:        'anklet',
+  Pendant:       'necklace',
+  Chain:         'necklace',
+  Brooch:        'earring',
+  Bangle:        'bracelet',
+  Pierce:        'earring',
   // Apparel
-  'T-Shirt': 'tshirt', 'Long T-Shirt': 'longtshirt', Hoodie: 'hoodie',
-  Sweatshirt: 'sweatshirt', Pants: 'pants', Shorts: 'shorts',
-  Jacket: 'jacket', Setup: 'setup', Cap: 'cap', Socks: 'socks',
+  'T-Shirt':     'tshirt',
+  'Long T-Shirt':'longtshirt',
+  Hoodie:        'hoodie',
+  Sweatshirt:    'hoodie',
+  Setup:         'setup',
+  Swimwear:      'swimwear',
+  Pants:         'setup',
+  Shorts:        'setup',
+  Jacket:        'hoodie',
+  Cap:           'tshirt',
+  Socks:         'tshirt',
   // Art
-  Print: 'print', Photography: 'photography', Canvas: 'canvas',
-  'Mixed Media': 'mixed-media', Sculpture: 'sculpture',
+  'Pop Art':      'pop_art',
+  'Luxury Art':   'luxury_art',
+  'Street Art':   'street_art',
+  'Fan Art':      'fan_art',
+  Print:          'pop_art',
+  Photography:    'luxury_art',
+  Canvas:         'luxury_art',
+  'Mixed Media':  'street_art',
 }
 
 /* ─── Base product types per category ─── */
 const BASE_PRODUCT_TYPES = {
   jewelry: [
-    'Necklace', 'Bracelet', 'Earring', 'Ring', 'Pendant',
-    'Anklet', 'Chain', 'Brooch', 'Bangle', 'Charm', 'Other',
+    'Necklace', 'Bracelet', 'Earring', 'Ring', 'Anklet',
+    'Pendant', 'Chain', 'Brooch', 'Bangle', 'Other',
   ],
   apparel: [
-    'T-Shirt', 'Long T-Shirt', 'Hoodie', 'Sweatshirt',
-    'Pants', 'Shorts', 'Jacket', 'Setup', 'Cap', 'Socks', 'Other',
+    'T-Shirt', 'Long T-Shirt', 'Hoodie', 'Setup', 'Swimwear',
+    'Sweatshirt', 'Pants', 'Shorts', 'Jacket', 'Cap', 'Socks', 'Other',
   ],
   art: [
-    'Print', 'Photography', 'Canvas', 'Mixed Media', 'Sculpture', 'Other',
+    'Pop Art', 'Luxury Art', 'Street Art', 'Fan Art',
+    'Print', 'Photography', 'Canvas', 'Mixed Media', 'Other',
   ],
 }
 
