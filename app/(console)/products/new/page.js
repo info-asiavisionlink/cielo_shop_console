@@ -211,7 +211,9 @@ export function ProductForm({ product }) {
     careSpecs.forEach(s => { if (s.spec_key in initial) initial[s.spec_key] = s.spec_value || '' })
     return initial
   })
-  const [aiFilledCare, setAiFilledCare] = useState(false)
+  const [aiFilledCare,  setAiFilledCare]  = useState(false)
+  const [careGenerating, setCareGenerating] = useState(false)
+  const [careError,      setCareError]      = useState('')
 
   /* ── Variants ── */
   const [variants, setVariants] = useState(
@@ -662,13 +664,52 @@ export function ProductForm({ product }) {
       {/* ══ 耐性・ケア情報（アクセサリーのみ） ══ */}
       {category === 'jewelry' && (
         <div className="form-section">
-          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            耐性・ケア情報
-            {aiFilledCare && (
-              <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI DRAFT</span>
-            )}
-            <span className="form-hint" style={{ marginLeft: 4 }}>SHOPのケアセクションに表示されます</span>
+          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              耐性・ケア情報
+              {aiFilledCare && (
+                <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI DRAFT</span>
+              )}
+              <span className="form-hint">SHOPのケアセクションに表示されます</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={careGenerating}
+              style={{ fontSize: 11, letterSpacing: '0.08em' }}
+              onClick={async () => {
+                setCareGenerating(true)
+                setCareError('')
+                try {
+                  const res  = await fetch('/api/generate-care', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                      specs:       specs.filter(s => s.spec_key && s.spec_value),
+                      productName: nameRef.current?.value || product?.name || '',
+                      productType,
+                      color:       productColor,
+                    }),
+                  })
+                  const data = await res.json()
+                  if (!res.ok || data.error) throw new Error(data.error)
+                  setCareInfo(prev => {
+                    const next = { ...prev }
+                    Object.entries(data.care).forEach(([k, v]) => { if (k in next) next[k] = v })
+                    return next
+                  })
+                  setAiFilledCare(true)
+                } catch (e) {
+                  setCareError(e.message)
+                } finally {
+                  setCareGenerating(false)
+                }
+              }}
+            >
+              {careGenerating ? '生成中...' : 'AI でケア情報を生成'}
+            </button>
           </div>
+          {careError && <div style={{ fontSize: 11, color: 'var(--danger,#e53e3e)', marginBottom: 8 }}>{careError}</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
               ['水耐性',     'WATER',     '日常的な軽い水濡れの後は、柔らかな布で水分を拭き取ってください。'],
