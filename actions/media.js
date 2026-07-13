@@ -14,12 +14,16 @@ export async function getSiteImages(site = 'website') {
   return data ?? []
 }
 
-export async function updateSiteImage(id, { image_url, alt_text }) {
+export async function updateSiteImage(id, { image_url, mobile_image_url, alt_text }) {
   const db = createAdminClient()
   const clean = s => (typeof s === 'string' ? s.trim() : '')
   const { error } = await db
     .from('site_images')
-    .update({ image_url: clean(image_url), alt_text: clean(alt_text) })
+    .update({
+      image_url:        clean(image_url),
+      mobile_image_url: clean(mobile_image_url),
+      alt_text:         clean(alt_text),
+    })
     .eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/media')
