@@ -2,13 +2,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getOrders, updateOrderStatus, updateTracking, updateOrderNotes } from '@/actions/orders'
 
-const ENG_TYPE_LABELS = {
-  initials:      'イニシャル',
-  name:          'お名前',
-  personal_mark: 'イニシャル・お名前',
-  date:          '日付',
-  short_message: 'メッセージ',
-}
 
 const STATUS_MAP = {
   pending:    '未確認',
@@ -237,8 +230,8 @@ export default function OrdersPage() {
                       <td onClick={e => e.stopPropagation()}>
                         <div className="td-name">{o.customer_name || '—'}</div>
                         <div className="td-mono">{o.customer_email || ''}</div>
-                        {(o.order_items ?? []).some(i => i.engraving_type) && (
-                          <div style={{ fontSize: 10, color: 'var(--gold)', letterSpacing: '0.08em', marginTop: 2, opacity: 0.7 }}>刻印あり</div>
+                        {o.message_card_to && (
+                          <div style={{ fontSize: 10, color: 'var(--gold)', letterSpacing: '0.08em', marginTop: 2, opacity: 0.7 }}>メッセージカードあり</div>
                         )}
                       </td>
                       <td className="td-price">¥{(o.total ?? 0).toLocaleString('ja-JP')}</td>
@@ -306,33 +299,6 @@ export default function OrdersPage() {
                                             {item.variant_label}
                                           </div>
                                         )}
-                                        {item.engraving_type ? (
-                                          <div style={{ marginTop: 6, padding: '6px 8px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.15)', borderRadius: 3 }}>
-                                            <div style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 5, textTransform: 'uppercase' }}>
-                                              Personal Inscription
-                                            </div>
-                                            <div style={{ display: 'flex', gap: 6, marginBottom: 2, alignItems: 'baseline' }}>
-                                              <span style={{ fontSize: 9, color: 'var(--text-3)', minWidth: 38, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Type</span>
-                                              <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{ENG_TYPE_LABELS[item.engraving_type] || item.engraving_type}</span>
-                                            </div>
-                                            {item.engraving_text && (
-                                              <div style={{ display: 'flex', gap: 6, marginBottom: 2, alignItems: 'baseline' }}>
-                                                <span style={{ fontSize: 9, color: 'var(--text-3)', minWidth: 38, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Text</span>
-                                                <span style={{ fontSize: 13, color: 'var(--gold)', fontWeight: 600, letterSpacing: '0.08em' }}>{item.engraving_text}</span>
-                                              </div>
-                                            )}
-                                            {item.inscription_location && (
-                                              <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                                                <span style={{ fontSize: 9, color: 'var(--text-3)', minWidth: 38, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Loc</span>
-                                                <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{item.inscription_location}</span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : (
-                                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3, fontStyle: 'italic' }}>
-                                            刻印なし
-                                          </div>
-                                        )}
                                       </td>
                                       <td style={{ padding: '6px 6px', textAlign: 'right', fontFamily: 'monospace' }}>
                                         ¥{(item.unit_price ?? 0).toLocaleString('ja-JP')}
@@ -347,11 +313,34 @@ export default function OrdersPage() {
                               </table>
                             </div>
 
-                            {/* 右カラム: 配送先 + メモ */}
+                            {/* 右カラム: 配送先 + メッセージカード + メモ */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                               {/* 配送先 */}
                               <ShippingBlock order={o} />
+
+                              {/* メッセージカード */}
+                              {o.message_card_to && (
+                                <div>
+                                  <div style={{ fontSize: 11, color: 'var(--gold)', marginBottom: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
+                                    Message Card — レーザー刻印
+                                  </div>
+                                  <div style={{ padding: '10px 12px', background: 'rgba(200,169,110,0.05)', border: '1px solid rgba(200,169,110,0.18)', borderRadius: 3, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <span style={{ fontSize: 9, color: 'var(--gold)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', minWidth: 32, paddingTop: 1 }}>To</span>
+                                      <span style={{ color: 'var(--text)', fontWeight: 600 }}>{o.message_card_to}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <span style={{ fontSize: 9, color: 'var(--gold)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', minWidth: 32, paddingTop: 1 }}>Msg</span>
+                                      <span style={{ color: 'var(--text-2)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{o.message_card_message}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <span style={{ fontSize: 9, color: 'var(--gold)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', minWidth: 32, paddingTop: 1 }}>From</span>
+                                      <span style={{ color: 'var(--text)', fontWeight: 600 }}>{o.message_card_from}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* メモ */}
                               <div>

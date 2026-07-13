@@ -73,12 +73,7 @@ export async function createProduct(formData) {
     og_image_url:        formData.get('og_image_url')     || null,
     seo_title:           formData.get('seo_title')        || null,
     seo_description:     formData.get('seo_description')  || null,
-    engraving_available: formData.get('engraving_available') === 'true',
-    engraving_required:  formData.get('engraving_required')  === 'true',
-    engraving_max_chars: parseInt(formData.get('engraving_max_chars') || '20', 10) || 20,
-    inscription_available_types: parseTypesJson(formData.get('inscription_available_types')),
-    inscription_location: formData.get('inscription_location') || null,
-    attributes:          {},
+    attributes: {},
   }
 
   const { data, error } = await db.from('products').insert(payload).select('id').single()
@@ -116,11 +111,6 @@ export async function updateProduct(id, formData) {
     og_image_url:        formData.get('og_image_url')     || null,
     seo_title:           formData.get('seo_title')        || null,
     seo_description:     formData.get('seo_description')  || null,
-    engraving_available: formData.get('engraving_available') === 'true',
-    engraving_required:  formData.get('engraving_required')  === 'true',
-    engraving_max_chars: parseInt(formData.get('engraving_max_chars') || '20', 10) || 20,
-    inscription_available_types: parseTypesJson(formData.get('inscription_available_types')),
-    inscription_location: formData.get('inscription_location') || null,
   }
 
   const { error } = await db.from('products').update(payload).eq('id', id)

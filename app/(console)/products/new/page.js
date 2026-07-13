@@ -100,13 +100,6 @@ export function ProductForm({ product }) {
   const [subcategory, setSubcategory] = useState(product?.subcategory || '')
   const [featured,    setFeatured]    = useState(product?.featured ?? false)
 
-  /* ── Inscription ── */
-  const [engravingAvailable, setEngravingAvailable] = useState(product?.engraving_available ?? false)
-  const [engravingRequired,  setEngravingRequired]  = useState(product?.engraving_required  ?? false)
-  const [engravingMaxChars,  setEngravingMaxChars]  = useState(product?.engraving_max_chars  ?? 20)
-  const [inscriptionTypes,   setInscriptionTypes]   = useState(product?.inscription_available_types ?? [])
-  const [inscriptionLocation, setInscriptionLocation] = useState(product?.inscription_location ?? '')
-
   /* ── Dynamic specs ── */
   const [specs, setSpecs] = useState(() => {
     const rows = (product?.product_specs || [])
@@ -584,61 +577,6 @@ export function ProductForm({ product }) {
         </div>
       )}
 
-
-      {/* ══ 刻印設定 ══ */}
-      <div className="form-section">
-        <div className="form-section-title">刻印オプション</div>
-        <div className="form-grid">
-          <div className="form-group form-col-2">
-            <label className="form-label" style={{ marginBottom: 10 }}>刻印対応</label>
-            <div className="toggle-wrap">
-              <label className="toggle">
-                <input type="checkbox" name="engraving_available" value="true" checked={!!engravingAvailable} onChange={e => setEngravingAvailable(e.target.checked)} />
-                <span className="toggle-slider" />
-              </label>
-              <span className="toggle-label">この商品は刻印オプションに対応しています</span>
-            </div>
-          </div>
-          {engravingAvailable && (
-            <>
-              <div className="form-group form-col-2">
-                <label className="form-label" style={{ marginBottom: 10 }}>刻印必須</label>
-                <div className="toggle-wrap">
-                  <label className="toggle">
-                    <input type="checkbox" name="engraving_required" value="true" checked={!!engravingRequired} onChange={e => setEngravingRequired(e.target.checked)} />
-                    <span className="toggle-slider" />
-                  </label>
-                  <span className="toggle-label">注文時に刻印内容の入力を必須にする</span>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">最大文字数</label>
-                <input className="form-input" type="number" name="engraving_max_chars" min="1" max="50"
-                  value={engravingMaxChars} onChange={e => setEngravingMaxChars(Math.min(50, Math.max(1, parseInt(e.target.value, 10) || 20)))} />
-              </div>
-              <div className="form-group form-col-2">
-                <label className="form-label" style={{ marginBottom: 10 }}>利用可能なタイプ</label>
-                <input type="hidden" name="inscription_available_types" value={JSON.stringify(inscriptionTypes)} />
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  {[['initials','イニシャル'],['name','お名前'],['date','日付'],['short_message','メッセージ']].map(([val, lbl]) => (
-                    <label key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-                      <input type="checkbox" checked={inscriptionTypes.includes(val)} style={{ width: 14, height: 14 }}
-                        onChange={e => setInscriptionTypes(prev => e.target.checked ? [...prev, val] : prev.filter(t => t !== val))} />
-                      {lbl}
-                    </label>
-                  ))}
-                </div>
-                <span className="form-hint">未選択の場合は全タイプが使用可能</span>
-              </div>
-              <div className="form-group form-col-2">
-                <label className="form-label">刻印場所</label>
-                <input className="form-input" name="inscription_location" value={inscriptionLocation} onChange={e => setInscriptionLocation(e.target.value)} placeholder="例: インナータグ / バックプレート / リング内側" />
-                <span className="form-hint">注文詳細に表示されます</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
 
       {/* ══ 説明文 ══ */}
       <div className="form-section">
