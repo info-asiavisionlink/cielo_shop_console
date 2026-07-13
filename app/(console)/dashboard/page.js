@@ -22,14 +22,14 @@ export default async function DashboardPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Dashboard</h1>
+          <h1 className="page-title">ダッシュボード</h1>
           <p className="page-sub">CIELO SHOP 管理概要</p>
         </div>
       </div>
       <div className="page-content">
 
         {/* KPI Row 1 — 売上 */}
-        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Revenue</div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>売上</div>
         <div className="stat-grid" style={{ marginBottom: 20 }}>
           <div className="stat-card">
             <div className="stat-label">累計売上</div>
@@ -42,7 +42,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* KPI Row 2 — 注文・発送 */}
-        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Orders & Shipping</div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>注文・配送</div>
         <div className="stat-grid" style={{ marginBottom: 20 }}>
           <div className="stat-card">
             <div className="stat-label">総注文数</div>
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* KPI Row 3 — 商品・顧客 */}
-        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Catalog & Customers</div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>商品・顧客</div>
         <div className="stat-grid" style={{ marginBottom: 28 }}>
           <div className="stat-card">
             <div className="stat-label">公開中の商品</div>

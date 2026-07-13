@@ -37,7 +37,7 @@ export default async function ProductsPage({ searchParams }) {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Products</h1>
+          <h1 className="page-title">商品</h1>
           <p className="page-sub">全{filtered.length}件</p>
         </div>
         <div className="page-actions">

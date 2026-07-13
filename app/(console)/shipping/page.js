@@ -77,7 +77,7 @@ export default function ShippingPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Shipping</h1>
+          <h1 className="page-title">配送</h1>
           <p className="page-sub">発送待ち {orders.length}件</p>
         </div>
       </div>

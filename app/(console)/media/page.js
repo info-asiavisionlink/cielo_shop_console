@@ -2,7 +2,7 @@ import MediaManager from './MediaManager'
 import { getSiteImages } from '@/actions/media'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Media — CIELO Console' }
+export const metadata = { title: 'メディア — CIELO Console' }
 
 export default async function MediaPage() {
   let websiteImages = []
@@ -12,7 +12,7 @@ export default async function MediaPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Media</h1>
+          <h1 className="page-title">メディア</h1>
           <p className="page-sub">WEBサイト・SHOPの画像を管理</p>
         </div>
       </div>

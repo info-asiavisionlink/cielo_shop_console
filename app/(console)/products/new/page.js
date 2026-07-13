@@ -463,7 +463,7 @@ export function ProductForm({ product }) {
       {category === 'apparel' && (
         <div className="form-section">
           <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            Apparel Type
+            アパレル種別
             {aiDraftFields.has('product_type') && (
               <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI</span>
             )}

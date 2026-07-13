@@ -109,7 +109,7 @@ function ShippingBlock({ order }) {
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Shipping Address
+          配送先住所
         </span>
         {copyText && <CopyBtn text={copyText} label="住所をコピー" />}
       </div>
@@ -177,7 +177,7 @@ export default function OrdersPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Orders</h1>
+          <h1 className="page-title">注文</h1>
           <p className="page-sub">全{orders.length}件</p>
         </div>
       </div>
@@ -278,7 +278,7 @@ export default function OrdersPage() {
                             {/* 注文明細 */}
                             <div>
                               <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 8, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                                Order Items
+                                注文明細
                               </div>
                               <table style={{ width: '100%', fontSize: 12 }}>
                                 <thead>
@@ -344,7 +344,7 @@ export default function OrdersPage() {
 
                               {/* メモ */}
                               <div>
-                                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Notes</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>メモ</div>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                   <input
                                     className="form-input"

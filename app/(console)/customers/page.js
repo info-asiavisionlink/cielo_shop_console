@@ -26,7 +26,7 @@ export default async function CustomersPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Customers</h1>
+          <h1 className="page-title">顧客</h1>
           <p className="page-sub">全{customers.length}件</p>
         </div>
       </div>

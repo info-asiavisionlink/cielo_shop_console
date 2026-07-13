@@ -15,8 +15,8 @@ const SECTION_META = {
 }
 
 const SITE_TABS = [
-  { value: 'website', label: 'CIELO WEBSITE' },
-  { value: 'shop',    label: 'CIELO SHOP' },
+  { value: 'website', label: 'CIELOウェブサイト' },
+  { value: 'shop',    label: 'CIELOショップ' },
 ]
 
 /* ════════════════════════════════════════
@@ -299,10 +299,10 @@ export default function MediaManager({ websiteImages }) {
             </div>
             <div style={{ padding: '20px' }}>
               <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, lineHeight: 1.7 }}>
-                CIELO SHOP の Hero スライダーは <strong style={{ color: 'var(--text)' }}>Experience → Hero Slides</strong> で管理しています。
+                CIELO ショップのヒーロースライダーは <strong style={{ color: 'var(--text)' }}>ヒーロースライド</strong> で管理しています。
               </p>
               <Link href="/experience/hero" className="btn btn-primary btn-sm">
-                Hero Slides を管理 →
+                ヒーロースライドを管理 →
               </Link>
             </div>
           </div>

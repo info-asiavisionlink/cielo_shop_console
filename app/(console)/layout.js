@@ -6,30 +6,30 @@ import { createClient } from '@/lib/supabase-browser'
 
 const NAV = [
   {
-    section: 'Overview',
+    section: '概要',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: <GridIcon /> },
+      { href: '/dashboard', label: 'ダッシュボード', icon: <GridIcon /> },
     ],
   },
   {
-    section: 'Catalog',
+    section: 'カタログ',
     items: [
-      { href: '/products', label: 'Products', icon: <BoxIcon /> },
+      { href: '/products', label: '商品', icon: <BoxIcon /> },
     ],
   },
   {
-    section: 'Commerce',
+    section: '販売管理',
     items: [
-      { href: '/orders',    label: 'Orders',    icon: <BagIcon /> },
-      { href: '/shipping',  label: 'Shipping',  icon: <TruckIcon /> },
-      { href: '/customers', label: 'Customers', icon: <UserIcon /> },
+      { href: '/orders',    label: '注文',   icon: <BagIcon /> },
+      { href: '/shipping',  label: '配送',   icon: <TruckIcon /> },
+      { href: '/customers', label: '顧客',   icon: <UserIcon /> },
     ],
   },
   {
-    section: 'Content',
+    section: 'コンテンツ',
     items: [
-      { href: '/media',          label: 'Media',       icon: <ImageIcon /> },
-      { href: '/experience/hero', label: 'Hero Slides', icon: <SlidersIcon /> },
+      { href: '/media',           label: 'メディア',         icon: <ImageIcon /> },
+      { href: '/experience/hero', label: 'ヒーロースライド', icon: <SlidersIcon /> },
     ],
   },
 ]
