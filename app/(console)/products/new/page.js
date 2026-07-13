@@ -52,23 +52,11 @@ export default function NewProductPage() {
   )
 }
 
-/* ─── アクセサリー用 刻印イメージ画像 ─── */
-const INSCRIPTION_IMAGE_URL = 'https://res.cloudinary.com/deyc8gz2k/image/upload/f_auto,q_auto,w_1200/v1783491219/products/assets/nfhuktbptq4mof5as18l.png'
+// CIELO. = Apparel専用
+// RTL.(jewelry) / VOID.(art) / MIRAI. は別コンソールで管理予定
 
 /* ─── Product type → subcategory slug ─── */
 const TYPE_TO_SUBCAT = {
-  // Accessories
-  Necklace:      'necklace',
-  Bracelet:      'bracelet',
-  Earring:       'earring',
-  Ring:          'ring',
-  Anklet:        'anklet',
-  Pendant:       'necklace',
-  Chain:         'necklace',
-  Brooch:        'earring',
-  Bangle:        'bracelet',
-  Pierce:        'earring',
-  // Apparel
   'T-Shirt':     'tshirt',
   'Long T-Shirt':'longtshirt',
   Hoodie:        'hoodie',
@@ -80,49 +68,18 @@ const TYPE_TO_SUBCAT = {
   Jacket:        'hoodie',
   Cap:           'tshirt',
   Socks:         'tshirt',
-  // Art
-  'Pop Art':      'pop_art',
-  'Luxury Art':   'luxury_art',
-  'Street Art':   'street_art',
-  'Fan Art':      'fan_art',
-  Print:          'pop_art',
-  Photography:    'luxury_art',
-  Canvas:         'luxury_art',
-  'Mixed Media':  'street_art',
 }
 
-/* ─── Base product types per category ─── */
+/* ─── Base product types (Apparel) ─── */
 const BASE_PRODUCT_TYPES = {
-  jewelry: [
-    'Necklace', 'Bracelet', 'Earring', 'Ring', 'Anklet',
-    'Pendant', 'Chain', 'Brooch', 'Bangle', 'Other',
-  ],
   apparel: [
     'T-Shirt', 'Long T-Shirt', 'Hoodie', 'Setup', 'Swimwear',
     'Sweatshirt', 'Pants', 'Shorts', 'Jacket', 'Cap', 'Socks', 'Other',
   ],
-  art: [
-    'Pop Art', 'Luxury Art', 'Street Art', 'Fan Art',
-    'Print', 'Photography', 'Canvas', 'Mixed Media', 'Other',
-  ],
 }
 
-/* ─── Spec templates per category ─── */
+/* ─── Spec templates (Apparel) ─── */
 const SPEC_TEMPLATES = {
-  jewelry: [
-    { spec_key: 'Material',            spec_value: '' },
-    { spec_key: 'Stone',               spec_value: '' },
-    { spec_key: 'Stone Hardness',      spec_value: '' },
-    { spec_key: 'Plating',             spec_value: '' },
-    { spec_key: 'Length',              spec_value: '' },
-    { spec_key: 'Width',               spec_value: '' },
-    { spec_key: 'Weight',              spec_value: '' },
-    { spec_key: 'Clasp',               spec_value: '' },
-    { spec_key: 'Water Resistance',    spec_value: '' },
-    { spec_key: 'Seawater Resistance', spec_value: '' },
-    { spec_key: 'Country of Origin',   spec_value: '' },
-    { spec_key: 'Care',                spec_value: '' },
-  ],
   apparel: [
     { spec_key: 'Material',          spec_value: '' },
     { spec_key: 'Fabric Weight',     spec_value: '' },
@@ -132,22 +89,13 @@ const SPEC_TEMPLATES = {
     { spec_key: 'Color',             spec_value: '' },
     { spec_key: 'Care',              spec_value: '' },
   ],
-  art: [
-    { spec_key: 'Material',          spec_value: '' },
-    { spec_key: 'Dimensions',        spec_value: '' },
-    { spec_key: 'Thickness',         spec_value: '' },
-    { spec_key: 'Print Method',      spec_value: '' },
-    { spec_key: 'Finish',            spec_value: '' },
-    { spec_key: 'Edition',           spec_value: '' },
-    { spec_key: 'Installation',      spec_value: '' },
-  ],
 }
 
 /* ═══════════════════════════════════════════════════════════
    ProductForm — 新規・編集 共用
 ═══════════════════════════════════════════════════════════ */
 export function ProductForm({ product }) {
-  const [category,    setCategory]    = useState(product?.category || '')
+  const [category,    setCategory]    = useState(product?.category || 'apparel')
   const [productType, setProductType] = useState(product?.product_type || '')
   const [subcategory, setSubcategory] = useState(product?.subcategory || '')
   const [featured,    setFeatured]    = useState(product?.featured ?? false)
@@ -186,17 +134,13 @@ export function ProductForm({ product }) {
     return [...base, ...extra.filter(t => !base.includes(t))]
   }
 
-  /* ── Images (max 5) ── */
+  /* ── Images (max 10) ── */
   const MAX_IMAGES = 10
   const initImages = () => {
     const imgs = (product?.product_images || [])
       .sort((a, b) => a.sort_order - b.sort_order).slice(0, MAX_IMAGES)
       .map(i => ({ url: i.image_url, alt: i.alt_text || '' }))
     while (imgs.length < MAX_IMAGES) imgs.push({ url: '', alt: '' })
-    // アクセサリー商品の場合、slot 5（画像6）に刻印イメージを自動セット
-    if ((product?.category === 'jewelry') && !imgs[5].url) {
-      imgs[5] = { url: INSCRIPTION_IMAGE_URL, alt: 'Personal Inscription' }
-    }
     return imgs
   }
   const [images, setImages] = useState(initImages)
@@ -242,26 +186,12 @@ export function ProductForm({ product }) {
   const seoTitleRef   = useRef()
   const seoDescRef    = useRef()
 
-  /* category 変更時: jewelry → slot 5 に刻印画像を自動セット、他 → クリア */
-  useEffect(() => {
-    setImages(prev => {
-      const next = [...prev]
-      if (category === 'jewelry') {
-        if (!next[5]?.url) next[5] = { url: INSCRIPTION_IMAGE_URL, alt: 'Personal Inscription' }
-      } else {
-        if (next[5]?.url === INSCRIPTION_IMAGE_URL) next[5] = { url: '', alt: '' }
-      }
-      return next
-    })
-  }, [category])
-
   /* product_type 変更時に subcategory を自動更新 */
   useEffect(() => {
-    if ((category === 'jewelry' || category === 'apparel') && TYPE_TO_SUBCAT[productType]) {
+    if (TYPE_TO_SUBCAT[productType]) {
       setSubcategory(TYPE_TO_SUBCAT[productType])
     }
-    if (category === 'art') { setProductType('Art'); setSubcategory(subcategory || 'art') }
-  }, [productType, category])
+  }, [productType])
 
   /* ── Helpers ── */
   function setImage(i, field, value) {
@@ -290,12 +220,7 @@ export function ProductForm({ product }) {
   function removeVariant(i) { setVariants(v => v.filter((_, idx) => idx !== i)) }
 
   function defaultVariantType() {
-    if (category === 'jewelry') {
-      if (productType === 'Ring') return 'ring_size'
-      if (['Necklace', 'Pendant', 'Bracelet'].includes(productType)) return 'chain_length'
-    }
-    if (category === 'apparel') return 'color_size'
-    return 'size'
+    return 'color_size' // CIELO. = Apparel専用
   }
 
   /* ── Spec helpers ── */
@@ -338,9 +263,9 @@ export function ProductForm({ product }) {
     if (draft.seo_title   && seoTitleRef.current) { seoTitleRef.current.value  = draft.seo_title;    filled.add('seo_title') }
     if (draft.seo_description && seoDescRef.current) { seoDescRef.current.value = draft.seo_description; filled.add('seo_description') }
 
-    const resolvedCat = draft.category === 'accessories' ? 'jewelry' : draft.category
-    if (resolvedCat && ['jewelry', 'apparel', 'art'].includes(resolvedCat)) {
-      setCategory(resolvedCat); filled.add('category')
+    const resolvedCat = 'apparel' // CIELO. = Apparel専用
+    if (draft.category === 'apparel') {
+      setCategory('apparel'); filled.add('category')
     }
 
     // product_type: auto-add if not in base list
@@ -444,10 +369,8 @@ export function ProductForm({ product }) {
               className="form-select" name="category" value={category} required
               onChange={e => { setCategory(e.target.value); setProductType(''); setSubcategory('') }}
             >
-              <option value="" disabled>選択してください</option>
-              <option value="jewelry">Accessories（アクセサリー）</option>
               <option value="apparel">Apparel（アパレル）</option>
-              <option value="art">Art（アート）</option>
+              {/* RTL.(jewelry) / VOID.(art) / MIRAI. は別コンソールで管理 */}
             </select>
           </div>
           <div className="form-group">
@@ -480,7 +403,7 @@ export function ProductForm({ product }) {
       <div className="form-section">
         <div className="form-section-title">
           商品画像
-          <span className="form-hint" style={{ marginLeft: 8 }}>1枚目がサムネイルになります{category === 'jewelry' ? '・画像6は刻印イメージ（自動）' : ''}</span>
+          <span className="form-hint" style={{ marginLeft: 8 }}>1枚目がサムネイルになります</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
           {images.map((img, i) => (
@@ -543,11 +466,11 @@ export function ProductForm({ product }) {
         </div>
       </div>
 
-      {/* ══ Product Type（Accessories / Apparel / Art） ══ */}
-      {(category === 'jewelry' || category === 'apparel' || category === 'art') && (
+      {/* ══ Product Type（Apparel） ══ */}
+      {category === 'apparel' && (
         <div className="form-section">
           <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {category === 'jewelry' ? 'Accessories Type' : category === 'apparel' ? 'Apparel Type' : 'Art Type'}
+            Apparel Type
             {aiDraftFields.has('product_type') && (
               <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI</span>
             )}
@@ -661,87 +584,6 @@ export function ProductForm({ product }) {
         </div>
       )}
 
-      {/* ══ 耐性・ケア情報（アクセサリーのみ） ══ */}
-      {category === 'jewelry' && (
-        <div className="form-section">
-          <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              耐性・ケア情報
-              {aiFilledCare && (
-                <span style={{ fontSize: 9, color: 'var(--gold)', letterSpacing: '0.1em', opacity: 0.7 }}>AI DRAFT</span>
-              )}
-              <span className="form-hint">SHOPのケアセクションに表示されます</span>
-            </div>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              disabled={careGenerating}
-              style={{ fontSize: 11, letterSpacing: '0.08em' }}
-              onClick={async () => {
-                setCareGenerating(true)
-                setCareError('')
-                try {
-                  const res  = await fetch('/api/generate-care', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({
-                      specs:       specs.filter(s => s.spec_key && s.spec_value),
-                      productName: nameRef.current?.value || product?.name || '',
-                      productType,
-                      color:       productColor,
-                    }),
-                  })
-                  const data = await res.json()
-                  if (!res.ok || data.error) throw new Error(data.error)
-                  setCareInfo(prev => {
-                    const next = { ...prev }
-                    Object.entries(data.care).forEach(([k, v]) => { if (k in next) next[k] = v })
-                    return next
-                  })
-                  setAiFilledCare(true)
-                } catch (e) {
-                  setCareError(e.message)
-                } finally {
-                  setCareGenerating(false)
-                }
-              }}
-            >
-              {careGenerating ? '生成中...' : 'AI でケア情報を生成'}
-            </button>
-          </div>
-          {careError && <div style={{ fontSize: 11, color: 'var(--danger,#e53e3e)', marginBottom: 8 }}>{careError}</div>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              ['水耐性',     'WATER',     '日常的な軽い水濡れの後は、柔らかな布で水分を拭き取ってください。'],
-              ['汗耐性',     'SWEAT',     '使用後は汗や皮脂を柔らかな布で拭き取ってください。'],
-              ['海水耐性',   'SEA WATER', '海水への長時間の接触は避けてください。'],
-              ['シャワー使用','SHOWER',   'シャワーや入浴時の着用は推奨しておりません。'],
-              ['プール使用', 'POOL',      'プールの塩素は金属を傷めます。'],
-              ['温泉使用',   'HOT SPRING','硫黄成分を含む温泉での着用はお控えください。'],
-              ['香水・化粧品','FRAGRANCE','着用前に充分乾燥させてからお使いください。'],
-              ['日常のお手入れ','DAILY CARE','使用後は柔らかな布で軽く拭き取ってください。'],
-              ['保管方法',   'STORAGE',   '付属の袋や個別のケースに入れて保管してください。'],
-              ['石の特徴',   'STONE',     '石の種類と特徴を入力してください。'],
-              ['石のお手入れ','STONE CARE','石のお手入れ方法を入力してください。'],
-            ].map(([key, label, ph]) => (
-              <div key={key} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, alignItems: 'start' }}>
-                <div style={{ paddingTop: 8 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--gold)', opacity: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-2)' }}>{key}</div>
-                </div>
-                <textarea
-                  className="form-textarea"
-                  rows={2}
-                  placeholder={ph}
-                  value={careInfo[key] || ''}
-                  onChange={e => setCareInfo(prev => ({ ...prev, [key]: e.target.value }))}
-                  style={{ fontSize: 12, lineHeight: 1.6, resize: 'vertical' }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ══ 刻印設定 ══ */}
       <div className="form-section">

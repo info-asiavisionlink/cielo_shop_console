@@ -4,28 +4,17 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
+// CIELO. = Apparel専用
+// RTL.(jewelry) / VOID.(art) / MIRAI. は別コンソールで管理予定
 const CAT_LABEL = { jewelry: 'Accessories', apparel: 'Apparel', art: 'Art' }
 
 const SUBCATS = {
-  jewelry: [
-    { value: 'necklace',  label: 'ネックレス' },
-    { value: 'bracelet',  label: 'ブレスレット' },
-    { value: 'ring',      label: 'リング' },
-    { value: 'anklet',    label: 'アンクレット' },
-    { value: 'earring',   label: 'イアリング' },
-  ],
   apparel: [
     { value: 'tshirt',     label: 'Tシャツ' },
-    { value: 'setup',      label: 'セットアップ' },
-    { value: 'hoodie',     label: 'パーカー' },
     { value: 'longtshirt', label: 'ロングTシャツ' },
+    { value: 'hoodie',     label: 'パーカー' },
+    { value: 'setup',      label: 'セットアップ' },
     { value: 'swimwear',   label: '水着' },
-  ],
-  art: [
-    { value: 'pop_art',    label: 'ポップアート' },
-    { value: 'luxury_art', label: 'ラグジュアリーアート' },
-    { value: 'street_art', label: 'ストリートアート' },
-    { value: 'fan_art',    label: 'ファンアート' },
   ],
 }
 
@@ -60,7 +49,7 @@ export default async function ProductsPage({ searchParams }) {
       <div className="page-content">
         {/* Category Filter */}
         <div className="filter-bar">
-          {[['all','すべて'],['jewelry','Accessories'],['apparel','Apparel'],['art','Art']].map(([val, label]) => (
+          {[['all','すべて'],['apparel','Apparel']].map(([val, label]) => (
             <Link
               key={val}
               href={`/products${val === 'all' ? '' : `?cat=${val}`}`}

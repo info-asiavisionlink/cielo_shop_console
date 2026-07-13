@@ -165,7 +165,7 @@ async function _saveSpecs(db, productId, category, specsJson) {
 
   await db.from('product_specs').insert(valid.map((s, i) => ({
     product_id: productId,
-    spec_type:  category || 'jewelry',
+    spec_type:  category || 'apparel',
     spec_key:   s.spec_key.trim(),
     spec_value: s.spec_value.trim(),
     sort_order: i,
